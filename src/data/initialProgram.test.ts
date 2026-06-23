@@ -54,11 +54,15 @@ describe("initialProgram", () => {
   });
 
   it("uses unique persisted ids", () => {
-    expectUniqueIds([initialProgram.program.id]);
-    expectUniqueIds(initialProgram.versions.map((version) => version.id));
-    expectUniqueIds(initialProgram.workouts.map((workout) => workout.id));
-    expectUniqueIds(initialProgram.exercises.map((exercise) => exercise.id));
-    expectUniqueIds(initialProgram.media.map((media) => media.id));
+    const persistedIds = [
+      initialProgram.program.id,
+      ...initialProgram.versions.map((version) => version.id),
+      ...initialProgram.workouts.map((workout) => workout.id),
+      ...initialProgram.exercises.map((exercise) => exercise.id),
+      ...initialProgram.media.map((media) => media.id),
+    ];
+
+    expectUniqueIds(persistedIds);
   });
 
   it("has offline media for every exercise", () => {
