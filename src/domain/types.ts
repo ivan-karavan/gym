@@ -10,8 +10,7 @@ export interface EntityMeta {
   schemaVersion: number;
 }
 
-export interface MediaAsset {
-  id: string;
+export interface MediaAsset extends EntityMeta {
   localPath: string;
   alt: string;
   attribution?: string;

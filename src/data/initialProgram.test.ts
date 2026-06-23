@@ -88,6 +88,11 @@ describe("initialProgram", () => {
 
   it("uses existing exercise ids in workout templates", () => {
     const exerciseIds = new Set(initialProgram.exercises.map((exercise) => exercise.id));
+    const referencedExerciseIds = new Set(
+      initialProgram.workouts.flatMap((workout) => workout.exercises.map((exercise) => exercise.exerciseId)),
+    );
+
+    expect(referencedExerciseIds).toEqual(exerciseIds);
 
     for (const workout of initialProgram.workouts) {
       for (const exercise of workout.exercises) {
@@ -98,6 +103,9 @@ describe("initialProgram", () => {
 
   it("uses existing media ids in exercises", () => {
     const mediaIds = new Set(initialProgram.media.map((media) => media.id));
+    const referencedMediaIds = new Set(initialProgram.exercises.map((exercise) => exercise.mediaId));
+
+    expect(referencedMediaIds).toEqual(mediaIds);
 
     for (const exercise of initialProgram.exercises) {
       expect(mediaIds.has(exercise.mediaId)).toBe(true);
