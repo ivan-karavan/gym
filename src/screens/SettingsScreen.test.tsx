@@ -11,14 +11,22 @@ const backupPayload = {
   schemaVersion: 1,
   exportedAt: "2026-06-23T10:00:00.000Z",
   appVersion: "0.1.0",
-  programs: [],
-  programVersions: [],
-  workouts: [],
-  exercises: [],
-  media: [],
+  programs: [initialProgram.program],
+  programVersions: initialProgram.versions,
+  workouts: initialProgram.workouts,
+  exercises: initialProgram.exercises,
+  media: initialProgram.media,
   sessions: [],
   sets: [],
-  settings: [],
+  settings: [
+    {
+      id: "app-settings",
+      createdAt: "2026-06-23T10:00:00.000Z",
+      updatedAt: "2026-06-23T10:00:00.000Z",
+      schemaVersion: 1,
+      activeProgramId: initialProgram.program.id,
+    },
+  ],
 } satisfies BackupPayload;
 
 function buildStoreValue(store: Partial<AppStoreValue>): AppStoreValue {
@@ -81,7 +89,7 @@ describe("SettingsScreen", () => {
 
     renderWithStore({ restoreJsonBackup }, <SettingsScreen />);
 
-    await user.upload(screen.getByLabelText("Restore JSON backup"), file);
+    await user.upload(screen.getByLabelText("Восстановить JSON backup"), file);
 
     expect(await screen.findByText("Текущая локальная база будет заменена.")).toBeInTheDocument();
     expect(restoreJsonBackup).not.toHaveBeenCalled();
@@ -90,6 +98,31 @@ describe("SettingsScreen", () => {
 
     await waitFor(() => {
       expect(restoreJsonBackup).toHaveBeenCalledWith(backupPayload);
+    });
+  });
+
+  it.each([
+    ["null", null],
+    ["random object", { ok: true }],
+  ])("rejects %s JSON before showing destructive confirmation", async (_caseName, value) => {
+    const user = userEvent.setup();
+    const restoreJsonBackup = vi.fn().mockResolvedValue(undefined);
+    const file = new File([JSON.stringify(value)], "invalid-backup.json", {
+      type: "application/json",
+    });
+
+    renderWithStore({ restoreJsonBackup }, <SettingsScreen />);
+
+    const input = screen.getByLabelText("Восстановить JSON backup") as HTMLInputElement;
+
+    await user.upload(input, file);
+
+    expect(await screen.findByText(/Не удалось прочитать JSON backup: Invalid backup/)).toBeInTheDocument();
+    expect(screen.queryByText("Текущая локальная база будет заменена.")).not.toBeInTheDocument();
+    expect(restoreJsonBackup).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(input.value).toBe("");
     });
   });
 });

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAppStore } from "../app/useAppStore";
 import type { Exercise, MediaAsset, ProgramBundle, WorkoutTemplate } from "../domain/types";
 
@@ -62,11 +62,21 @@ interface ProgramExerciseProps {
 }
 
 function ProgramExercise({ exercise, media, order, target }: ProgramExerciseProps) {
+  const [failedMediaPath, setFailedMediaPath] = useState<string | null>(null);
+  const image =
+    media && failedMediaPath !== media.localPath
+      ? {
+          alt: media.alt,
+          localPath: media.localPath,
+          src: getRelativeMediaPath(media.localPath),
+        }
+      : null;
+
   return (
     <article className="program-exercise" aria-label={exercise.name}>
       <div className="program-exercise-media">
-        {media ? (
-          <img src={`/${media.localPath}`} alt={media.alt} />
+        {image?.src ? (
+          <img src={image.src} alt={image.alt} onError={() => setFailedMediaPath(image.localPath)} />
         ) : (
           <div className="exercise-image-fallback" role="img" aria-label={exercise.name}>
             {exercise.name.slice(0, 1)}
@@ -93,6 +103,10 @@ function ProgramExercise({ exercise, media, order, target }: ProgramExerciseProp
       </div>
     </article>
   );
+}
+
+function getRelativeMediaPath(localPath: string): string {
+  return localPath.replace(/^\/+/, "");
 }
 
 function getCurrentWorkouts(programBundle: ProgramBundle | null): WorkoutTemplate[] {

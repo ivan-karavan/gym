@@ -1,12 +1,12 @@
 import { Download, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAppStore } from "../app/useAppStore";
-import type { BackupPayload } from "../storage/backup";
+import { parseBackup, type BackupPayload } from "../storage/backup";
 
 export function SettingsScreen() {
   const { exportJsonBackup, restoreJsonBackup } = useAppStore();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [pendingBackup, setPendingBackup] = useState<unknown>(null);
+  const [pendingBackup, setPendingBackup] = useState<BackupPayload | null>(null);
   const [pendingFileName, setPendingFileName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export function SettingsScreen() {
         <label className="file-restore-control">
           <span className="file-restore-label">
             <Upload aria-hidden="true" size={19} />
-            Restore JSON backup
+            Восстановить JSON backup
           </span>
           <input
             ref={fileInputRef}
@@ -91,7 +91,7 @@ export function SettingsScreen() {
     }
 
     try {
-      const parsed = JSON.parse(await readTextFile(file)) as unknown;
+      const parsed = parseBackup(JSON.parse(await readTextFile(file)) as unknown);
       setPendingBackup(parsed);
       setPendingFileName(file.name);
     } catch (parseError) {

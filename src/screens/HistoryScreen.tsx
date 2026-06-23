@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { useAppStore } from "../app/useAppStore";
 import { WeekPicker } from "../components/WeekPicker";
-import type { SetLog, WorkoutExerciseSnapshot } from "../domain/types";
-import { getWeekStart, groupSessionsByWeek, summarizeExerciseWeek } from "../domain/workoutLogic";
+import type { SetLog, WorkoutExerciseSnapshot, WorkoutSession } from "../domain/types";
+import { getWeekStart, summarizeExerciseWeek } from "../domain/workoutLogic";
 
 export function HistoryScreen() {
   const { sessions, sets } = useAppStore();
   const [selectedWeekStart, setSelectedWeekStart] = useState(() => getWeekStart(new Date()));
-  const weekGroups = useMemo(() => groupSessionsByWeek(sessions), [sessions]);
+  const weekGroups = useMemo(() => groupHistorySessionsByLocalWeek(sessions), [sessions]);
   const selectedWeek = weekGroups.find((group) => group.weekStart === selectedWeekStart);
   const setsBySlot = useMemo(() => groupSetsBySessionAndExercise(sets), [sets]);
 
@@ -66,6 +66,31 @@ export function HistoryScreen() {
   );
 }
 
+interface HistoryWeekGroup {
+  weekStart: string;
+  sessions: WorkoutSession[];
+}
+
+function groupHistorySessionsByLocalWeek(sessions: WorkoutSession[]): HistoryWeekGroup[] {
+  const groups = new Map<string, WorkoutSession[]>();
+
+  for (const session of sessions) {
+    if (session.status !== "completed") {
+      continue;
+    }
+
+    const weekStart = getWeekStart(new Date(session.startedAt));
+    groups.set(weekStart, [...(groups.get(weekStart) ?? []), session]);
+  }
+
+  return [...groups.entries()]
+    .sort(([leftWeek], [rightWeek]) => rightWeek.localeCompare(leftWeek))
+    .map(([weekStart, weekSessions]) => ({
+      weekStart,
+      sessions: [...weekSessions].sort((left, right) => compareStartedAtAsc(left.startedAt, right.startedAt)),
+    }));
+}
+
 function groupSetsBySessionAndExercise(sets: SetLog[]): Map<string, SetLog[]> {
   const grouped = new Map<string, SetLog[]>();
 
@@ -98,6 +123,10 @@ function formatExerciseSummary(snapshot: WorkoutExerciseSnapshot, sets: SetLog[]
   const summary = summarizeExerciseWeek(snapshot.loggingType, sets);
 
   return summary === "-" ? "Подходов нет" : summary;
+}
+
+function compareStartedAtAsc(left: string, right: string): number {
+  return new Date(left).getTime() - new Date(right).getTime();
 }
 
 function formatSessionDate(value: string): string {
