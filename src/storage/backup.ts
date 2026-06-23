@@ -215,6 +215,23 @@ function collectDuplicateIds<T extends { id: string }>(path: string, items: read
   return Array.from(duplicates, (id) => `${path}: duplicate id "${id}"`);
 }
 
+function collectDuplicateSetSlots(sets: readonly SetLog[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const set of sets) {
+    const key = `${set.sessionId}\u0000${set.exerciseId}\u0000${set.setIndex}`;
+
+    if (seen.has(key)) {
+      duplicates.add(`${set.sessionId}/${set.exerciseId}/${set.setIndex}`);
+    }
+
+    seen.add(key);
+  }
+
+  return Array.from(duplicates, (key) => `sets: duplicate logical slot "${key}"`);
+}
+
 function validateReference(issues: string[], path: string, id: string, ids: ReadonlySet<string>): void {
   if (!ids.has(id)) {
     issues.push(`${path}: unknown id "${id}"`);
@@ -244,6 +261,7 @@ function validateBackupSemantics(payload: BackupPayload): void {
     ...collectDuplicateIds("media", payload.media),
     ...collectDuplicateIds("sessions", payload.sessions),
     ...collectDuplicateIds("sets", payload.sets),
+    ...collectDuplicateSetSlots(payload.sets),
     ...collectDuplicateIds("settings", payload.settings),
   ];
 

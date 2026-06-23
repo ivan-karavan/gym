@@ -147,6 +147,24 @@ describe("backup", () => {
     ).toThrow(/Invalid backup/);
   });
 
+  it("rejects duplicate logical set slots with different primary ids", async () => {
+    const payload = await createBackupPayload();
+    const [set] = payload.sets;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        sets: [
+          set,
+          {
+            ...set,
+            id: `${set.id}-duplicate`,
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
   it("rejects missing settings row and wrong settings id", async () => {
     const payload = await createBackupPayload();
     const [settings] = payload.settings;
