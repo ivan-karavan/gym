@@ -240,14 +240,17 @@ describe("repository", () => {
       repo.completeSession(session.id, "2026-06-23T11:00:00.000Z"),
     ]);
 
-    expect(await repo.loadSessions()).toMatchObject([
+    const [updatedSession] = await repo.loadSessions();
+
+    expect(updatedSession).toMatchObject(
       {
         id: session.id,
         status: "completed",
         completedAt: "2026-06-23T11:00:00.000Z",
         note: "keep this note",
       },
-    ]);
+    );
+    expect(updatedSession?.updatedAt).not.toBe("2026-06-23T11:00:00.000Z");
   });
 
   it("generates ids with getRandomValues when randomUUID is unavailable", async () => {

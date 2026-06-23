@@ -290,10 +290,11 @@ export function createRepository(db: GymDatabase) {
   }
 
   async function completeSession(sessionId: string, completedAt = nowIso()): Promise<WorkoutSession> {
+    const updatedAt = nowIso();
     const updatedCount = await db.sessions.update(sessionId, {
       status: "completed",
       completedAt,
-      updatedAt: completedAt,
+      updatedAt,
     } satisfies Partial<WorkoutSession>);
 
     if (updatedCount === 0) {
