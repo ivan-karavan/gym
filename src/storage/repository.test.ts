@@ -1,6 +1,6 @@
 import "fake-indexeddb/auto";
 import Dexie from "dexie";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initialProgram } from "../data/initialProgram";
 import type { ProgramBundle } from "../domain/types";
 import { createGymDatabase, type GymDatabase } from "./db";
@@ -33,14 +33,19 @@ describe("repository", () => {
     for (const db of openDatabases.splice(0)) {
       db.close();
     }
+
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  const createTestRepository = () => {
+  const createTestDatabase = () => {
     const db = createGymDatabase(databaseName);
     openDatabases.push(db);
 
-    return createRepository(db);
+    return db;
   };
+
+  const createTestRepository = () => createRepository(createTestDatabase());
 
   it("initializes and loads the current program with stable ids and A/B/C workout order", async () => {
     const repo = createTestRepository();
@@ -123,6 +128,42 @@ describe("repository", () => {
     expect(await repo.loadSetsForSession(session.id)).toEqual([second]);
   });
 
+  it("uses a deterministic set id so concurrent saves for one slot store one set", async () => {
+    const repo = createTestRepository();
+    await repo.initialize(initialProgram);
+    const session = await repo.startWorkout("A", "2026-06-23T10:00:00.000Z");
+
+    const [first, second] = await Promise.all([
+      repo.saveSet({
+        sessionId: session.id,
+        exerciseId: "ex-bench-press",
+        setIndex: 1,
+        effort: "normal",
+        loggingType: "weight_reps",
+        weightKg: 42.5,
+        reps: 8,
+      }),
+      repo.saveSet({
+        sessionId: session.id,
+        exerciseId: "ex-bench-press",
+        setIndex: 1,
+        effort: "hard",
+        note: "parallel write",
+        loggingType: "weight_reps",
+        weightKg: 45,
+        reps: 6,
+      }),
+    ]);
+
+    const deterministicId = `set:${encodeURIComponent(session.id)}:${encodeURIComponent("ex-bench-press")}:1`;
+    const sets = await repo.loadSetsForSession(session.id);
+
+    expect(first.id).toBe(deterministicId);
+    expect(second.id).toBe(deterministicId);
+    expect(sets).toHaveLength(1);
+    expect(sets[0]?.id).toBe(deterministicId);
+  });
+
   it("roundtrips reps-only and duration set shapes without impossible fields", async () => {
     const repo = createTestRepository();
     await repo.initialize(initialProgram);
@@ -171,6 +212,55 @@ describe("repository", () => {
         completedAt: "2026-06-23T11:00:00.000Z",
       },
     ]);
+  });
+
+  it("keeps overlapping note and completion updates from clobbering each other", async () => {
+    const db = createTestDatabase();
+    const repo = createRepository(db);
+    await repo.initialize(initialProgram);
+    const session = await repo.startWorkout("C", "2026-06-23T10:00:00.000Z");
+    const originalGet = db.sessions.get.bind(db.sessions);
+    let staleReadsRemaining = 2;
+
+    vi.spyOn(db.sessions, "get").mockImplementation((async (key: string) => {
+      if (key === session.id && staleReadsRemaining > 0) {
+        staleReadsRemaining -= 1;
+
+        return {
+          ...session,
+          exerciseSnapshots: session.exerciseSnapshots.map((snapshot) => ({ ...snapshot })),
+        };
+      }
+
+      return originalGet(key);
+    }) as typeof db.sessions.get);
+
+    await Promise.all([
+      repo.updateSessionNote(session.id, "keep this note"),
+      repo.completeSession(session.id, "2026-06-23T11:00:00.000Z"),
+    ]);
+
+    expect(await repo.loadSessions()).toMatchObject([
+      {
+        id: session.id,
+        status: "completed",
+        completedAt: "2026-06-23T11:00:00.000Z",
+        note: "keep this note",
+      },
+    ]);
+  });
+
+  it("generates ids with getRandomValues when randomUUID is unavailable", async () => {
+    vi.stubGlobal("crypto", {
+      getRandomValues: (values: Uint8Array) => values.fill(0),
+    });
+
+    const repo = createTestRepository();
+    await repo.initialize(initialProgram);
+
+    const session = await repo.startWorkout("A", "2026-06-23T10:00:00.000Z");
+
+    expect(session.id).toBe("session-00000000-0000-4000-8000-000000000000");
   });
 
   it("throws when the current version references a missing workout", async () => {

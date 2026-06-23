@@ -13,6 +13,7 @@ export type SaveSetInput = SetLog extends infer Item
 const settingsId = "app-settings";
 
 let lastTimestampMs = 0;
+let fallbackIdCounter = 0;
 
 export function nowIso(): string {
   const currentTimestampMs = Date.now();
@@ -23,7 +24,47 @@ export function nowIso(): string {
 }
 
 function makeId(prefix: string): string {
-  return `${prefix}-${globalThis.crypto.randomUUID()}`;
+  return `${prefix}-${makeRandomUuid()}`;
+}
+
+function makeRandomUuid(): string {
+  const crypto = globalThis.crypto;
+
+  if (crypto?.randomUUID) {
+    return crypto.randomUUID();
+  }
+
+  if (crypto?.getRandomValues) {
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+
+    return formatUuid(bytes);
+  }
+
+  fallbackIdCounter += 1;
+
+  return `${Date.now().toString(36)}-${fallbackIdCounter.toString(36)}`;
+}
+
+function formatUuid(bytes: Uint8Array): string {
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+
+  return [
+    hex.slice(0, 4).join(""),
+    hex.slice(4, 6).join(""),
+    hex.slice(6, 8).join(""),
+    hex.slice(8, 10).join(""),
+    hex.slice(10, 16).join(""),
+  ].join("-");
+}
+
+function encodeIdPart(value: string | number): string {
+  return encodeURIComponent(String(value));
+}
+
+function makeSetId(input: Pick<SaveSetInput, "sessionId" | "exerciseId" | "setIndex">): string {
+  return `set:${encodeIdPart(input.sessionId)}:${encodeIdPart(input.exerciseId)}:${encodeIdPart(input.setIndex)}`;
 }
 
 function sortSets(left: SetLog, right: SetLog): number {
@@ -56,7 +97,7 @@ function sortVersions(left: ProgramBundle["versions"][number], right: ProgramBun
 
 function buildSetLog(input: SaveSetInput, existing: SetLog | undefined, updatedAt: string): SetLog {
   const base = {
-    id: existing?.id ?? makeId("set"),
+    id: existing?.id ?? makeSetId(input),
     createdAt: existing?.createdAt ?? updatedAt,
     updatedAt,
     schemaVersion: 1,
@@ -184,15 +225,14 @@ export function createRepository(db: GymDatabase) {
   }
 
   async function saveSet(input: SaveSetInput): Promise<SetLog> {
-    const existing = await db.sets
-      .where("[sessionId+exerciseId+setIndex]")
-      .equals([input.sessionId, input.exerciseId, input.setIndex])
-      .first();
-    const set = buildSetLog(input, existing, nowIso());
+    return db.transaction("rw", db.sets, async () => {
+      const existing = await db.sets.get(makeSetId(input));
+      const set = buildSetLog(input, existing, nowIso());
 
-    await db.sets.put(set);
+      await db.sets.put(set);
 
-    return set;
+      return set;
+    });
   }
 
   async function loadSetsForSession(sessionId: string): Promise<SetLog[]> {
@@ -230,38 +270,41 @@ export function createRepository(db: GymDatabase) {
   }
 
   async function updateSessionNote(sessionId: string, note: string): Promise<WorkoutSession> {
-    const session = await db.sessions.get(sessionId);
+    const updatedAt = nowIso();
+    const updatedCount = await db.sessions.update(sessionId, {
+      note,
+      updatedAt,
+    } satisfies Partial<WorkoutSession>);
 
-    if (!session) {
+    if (updatedCount === 0) {
       throw new Error(`Session ${sessionId} is missing`);
     }
 
-    const updatedSession: WorkoutSession = {
-      ...session,
-      note,
-      updatedAt: nowIso(),
-    };
+    const updatedSession = await db.sessions.get(sessionId);
 
-    await db.sessions.put(updatedSession);
+    if (!updatedSession) {
+      throw new Error(`Session ${sessionId} is missing`);
+    }
 
     return updatedSession;
   }
 
   async function completeSession(sessionId: string, completedAt = nowIso()): Promise<WorkoutSession> {
-    const session = await db.sessions.get(sessionId);
-
-    if (!session) {
-      throw new Error(`Session ${sessionId} is missing`);
-    }
-
-    const updatedSession: WorkoutSession = {
-      ...session,
+    const updatedCount = await db.sessions.update(sessionId, {
       status: "completed",
       completedAt,
       updatedAt: completedAt,
-    };
+    } satisfies Partial<WorkoutSession>);
 
-    await db.sessions.put(updatedSession);
+    if (updatedCount === 0) {
+      throw new Error(`Session ${sessionId} is missing`);
+    }
+
+    const updatedSession = await db.sessions.get(sessionId);
+
+    if (!updatedSession) {
+      throw new Error(`Session ${sessionId} is missing`);
+    }
 
     return updatedSession;
   }
