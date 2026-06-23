@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { initialProgram } from "./initialProgram";
 
+const expectUniqueIds = (ids: string[]) => {
+  expect(new Set(ids).size).toBe(ids.length);
+};
+
 describe("initialProgram", () => {
   it("contains workouts A, B, and C in order", () => {
     expect(initialProgram.workouts.map((workout) => workout.code)).toEqual(["A", "B", "C"]);
@@ -24,12 +28,12 @@ describe("initialProgram", () => {
         { exerciseId: "ex-bench-press", target: "3 x 6-8" },
         { exerciseId: "ex-horizontal-row", target: "3 x 8-10" },
         { exerciseId: "ex-romanian-deadlift", target: "2-3 x 8-10" },
-        { exerciseId: "ex-plank", target: "3 x 30-60 sec" },
+        { exerciseId: "ex-plank", target: "3 x 30-60 секунд" },
       ],
       B: [
         { exerciseId: "ex-deadlift", target: "3 x 4-6" },
         { exerciseId: "ex-overhead-press", target: "3 x 6-8" },
-        { exerciseId: "ex-pull-up", target: "3 sets, not to failure" },
+        { exerciseId: "ex-pull-up", target: "3 подхода не до отказа" },
         { exerciseId: "ex-leg-press-lunge", target: "3 x 8-10" },
         { exerciseId: "ex-face-pull", target: "2-3 x 12-15" },
       ],
@@ -45,8 +49,16 @@ describe("initialProgram", () => {
 
   it("uses stable unique exercise ids", () => {
     const ids = initialProgram.exercises.map((exercise) => exercise.id);
-    expect(new Set(ids).size).toBe(ids.length);
+    expectUniqueIds(ids);
     expect(ids.every((id) => id.startsWith("ex-"))).toBe(true);
+  });
+
+  it("uses unique persisted ids", () => {
+    expectUniqueIds([initialProgram.program.id]);
+    expectUniqueIds(initialProgram.versions.map((version) => version.id));
+    expectUniqueIds(initialProgram.workouts.map((workout) => workout.id));
+    expectUniqueIds(initialProgram.exercises.map((exercise) => exercise.id));
+    expectUniqueIds(initialProgram.media.map((media) => media.id));
   });
 
   it("has offline media for every exercise", () => {

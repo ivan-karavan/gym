@@ -228,7 +228,7 @@ const workouts: WorkoutTemplate[] = [
       { exerciseId: "ex-bench-press", order: 2, target: "3 x 6-8" },
       { exerciseId: "ex-horizontal-row", order: 3, target: "3 x 8-10" },
       { exerciseId: "ex-romanian-deadlift", order: 4, target: "2-3 x 8-10" },
-      { exerciseId: "ex-plank", order: 5, target: "3 x 30-60 sec" },
+      { exerciseId: "ex-plank", order: 5, target: "3 x 30-60 секунд" },
     ],
   },
   {
@@ -238,7 +238,7 @@ const workouts: WorkoutTemplate[] = [
     exercises: [
       { exerciseId: "ex-deadlift", order: 1, target: "3 x 4-6" },
       { exerciseId: "ex-overhead-press", order: 2, target: "3 x 6-8" },
-      { exerciseId: "ex-pull-up", order: 3, target: "3 sets, not to failure" },
+      { exerciseId: "ex-pull-up", order: 3, target: "3 подхода не до отказа" },
       { exerciseId: "ex-leg-press-lunge", order: 4, target: "3 x 8-10" },
       { exerciseId: "ex-face-pull", order: 5, target: "2-3 x 12-15" },
     ],
