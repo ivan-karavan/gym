@@ -273,7 +273,8 @@ const version: ProgramVersion = {
 
 export const initialProgram: ProgramBundle = {
   program,
-  version,
+  versions: [version],
+  currentVersion: version,
   workouts,
   exercises,
   media,

@@ -6,12 +6,40 @@ describe("initialProgram", () => {
     expect(initialProgram.workouts.map((workout) => workout.code)).toEqual(["A", "B", "C"]);
   });
 
-  it("uses exact workout target strings from the plan", () => {
-    expect(initialProgram.workouts.map((workout) => workout.exercises.map((exercise) => exercise.target))).toEqual([
-      ["3 x 6-8", "3 x 6-8", "3 x 8-10", "2-3 x 8-10", "3 x 30-60 sec"],
-      ["3 x 4-6", "3 x 6-8", "3 sets, not to failure", "3 x 8-10", "2-3 x 12-15"],
-      ["3 x 8", "3 x 8-10", "3 x 8-10", "2-3 x 10-12", "2-3 x 12-15"],
-    ]);
+  it("uses exact workout exercise ids and targets from the plan", () => {
+    expect(
+      Object.fromEntries(
+        initialProgram.workouts.map((workout) => [
+          workout.code,
+          workout.exercises.map((exercise) => ({
+            exerciseId: exercise.exerciseId,
+            target: exercise.target,
+          })),
+        ]),
+      ),
+    ).toEqual({
+      A: [
+        { exerciseId: "ex-barbell-squat", target: "3 x 6-8" },
+        { exerciseId: "ex-bench-press", target: "3 x 6-8" },
+        { exerciseId: "ex-horizontal-row", target: "3 x 8-10" },
+        { exerciseId: "ex-romanian-deadlift", target: "2-3 x 8-10" },
+        { exerciseId: "ex-plank", target: "3 x 30-60 sec" },
+      ],
+      B: [
+        { exerciseId: "ex-deadlift", target: "3 x 4-6" },
+        { exerciseId: "ex-overhead-press", target: "3 x 6-8" },
+        { exerciseId: "ex-pull-up", target: "3 sets, not to failure" },
+        { exerciseId: "ex-leg-press-lunge", target: "3 x 8-10" },
+        { exerciseId: "ex-face-pull", target: "2-3 x 12-15" },
+      ],
+      C: [
+        { exerciseId: "ex-front-squat-light", target: "3 x 8" },
+        { exerciseId: "ex-incline-dumbbell-press", target: "3 x 8-10" },
+        { exerciseId: "ex-lat-pulldown", target: "3 x 8-10" },
+        { exerciseId: "ex-hyperextension-leg-curl", target: "2-3 x 10-12" },
+        { exerciseId: "ex-lateral-raise-abs", target: "2-3 x 12-15" },
+      ],
+    });
   });
 
   it("uses stable unique exercise ids", () => {
@@ -31,7 +59,12 @@ describe("initialProgram", () => {
   it("links the active version to existing workouts", () => {
     const workoutIds = new Set(initialProgram.workouts.map((workout) => workout.id));
 
-    for (const workoutId of initialProgram.version.workoutIds) {
+    expect(initialProgram.program.currentVersionId).toBe(initialProgram.currentVersion.id);
+    expect(initialProgram.currentVersion.programId).toBe(initialProgram.program.id);
+    expect(initialProgram.versions.map((version) => version.id)).toEqual([initialProgram.currentVersion.id]);
+    expect(initialProgram.currentVersion.workoutIds).toEqual(initialProgram.workouts.map((workout) => workout.id));
+
+    for (const workoutId of initialProgram.currentVersion.workoutIds) {
       expect(workoutIds.has(workoutId)).toBe(true);
     }
   });

@@ -52,7 +52,8 @@ export interface Program extends EntityMeta {
 
 export interface ProgramBundle {
   program: Program;
-  version: ProgramVersion;
+  versions: ProgramVersion[];
+  currentVersion: ProgramVersion;
   workouts: WorkoutTemplate[];
   exercises: Exercise[];
   media: MediaAsset[];
@@ -70,16 +71,36 @@ export interface WorkoutExerciseSnapshot {
   referenceUrl?: string;
 }
 
-export interface SetLog extends EntityMeta {
+export interface SetLogBase extends EntityMeta {
   sessionId: string;
   exerciseId: string;
   setIndex: number;
-  weightKg?: number;
-  reps?: number;
-  durationSeconds?: number;
   effort: Effort;
-  note: string;
+  note?: string;
 }
+
+export type WeightRepsSetLog = SetLogBase & {
+  loggingType: "weight_reps";
+  weightKg: number;
+  reps: number;
+  durationSeconds?: never;
+};
+
+export type RepsSetLog = SetLogBase & {
+  loggingType: "reps";
+  reps: number;
+  weightKg?: never;
+  durationSeconds?: never;
+};
+
+export type DurationSetLog = SetLogBase & {
+  loggingType: "duration";
+  durationSeconds: number;
+  weightKg?: never;
+  reps?: never;
+};
+
+export type SetLog = WeightRepsSetLog | RepsSetLog | DurationSetLog;
 
 export interface WorkoutSession extends EntityMeta {
   programVersionId: string;
