@@ -15,12 +15,10 @@ export interface SessionWeekGroup {
 
 export interface PreviousExerciseSets {
   weekStart: string;
-  sessionId: string;
-  sessionStartedAt: string;
+  sessionIds: string[];
+  sessionStartedAts: string[];
   sets: SetLog[];
 }
-
-const workoutCycle: WorkoutCode[] = ["A", "B", "C"];
 
 export function getWorkoutByCode(bundle: ProgramBundle, code: WorkoutCode): WorkoutTemplate {
   const currentWorkoutIds = new Set(bundle.currentVersion.workoutIds);
@@ -65,21 +63,32 @@ export function buildExerciseSnapshots(
     });
 }
 
-export function suggestNextWorkoutCode(sessions: WorkoutSession[]): WorkoutCode {
+export function suggestNextWorkoutCode(bundle: ProgramBundle, sessions: WorkoutSession[]): WorkoutCode {
+  const workoutCycle = getCurrentWorkoutCodes(bundle);
+  const firstWorkoutCode = workoutCycle[0];
+
+  if (firstWorkoutCode === undefined) {
+    throw new Error(`Current program version ${bundle.currentVersion.id} has no workouts`);
+  }
+
   const latestCompleted = sessions
     .filter((session) => session.status === "completed")
     .sort((left, right) => compareStartedAtDesc(left.startedAt, right.startedAt))[0];
 
   if (!latestCompleted) {
-    return "A";
+    return firstWorkoutCode;
   }
 
   const index = workoutCycle.indexOf(latestCompleted.workoutCode);
+  if (index === -1) {
+    return firstWorkoutCode;
+  }
+
   return workoutCycle[(index + 1) % workoutCycle.length];
 }
 
 export function getWeekStart(date: Date | string): string {
-  const localDate = toDate(date);
+  const localDate = toLocalCalendarDate(date);
   const day = localDate.getDay();
   const daysFromMonday = day === 0 ? 6 : day - 1;
   const monday = new Date(localDate.getFullYear(), localDate.getMonth(), localDate.getDate());
@@ -125,16 +134,22 @@ export function getPreviousExerciseSets(
     Array.from({ length: limitWeeks }, (_, index) => addDays(currentWeekStart, -7 * (index + 1))),
   );
   const matchingSetsBySession = groupSetsBySession(sets.filter((set) => set.exerciseId === exerciseId));
-
-  return sessions
+  const entries = sessions
     .filter((session) => session.status === "completed")
     .filter((session) => toDate(session.startedAt).getTime() < currentStartedAtMs)
-    .map((session) => ({
-      session,
-      weekStart: getWeekStart(session.startedAt),
-      sets: matchingSetsBySession.get(session.id) ?? [],
-    }))
-    .filter((entry) => previousWeekStarts.has(entry.weekStart) && entry.sets.length > 0)
+    .flatMap((session) => {
+      const weekStart = getWeekStart(session.startedAt);
+
+      if (!previousWeekStarts.has(weekStart)) {
+        return [];
+      }
+
+      return (matchingSetsBySession.get(session.id) ?? []).map((set) => ({
+        session,
+        weekStart,
+        set,
+      }));
+    })
     .sort((left, right) => {
       const weekCompare = right.weekStart.localeCompare(left.weekStart);
 
@@ -142,14 +157,36 @@ export function getPreviousExerciseSets(
         return weekCompare;
       }
 
-      return compareStartedAtDesc(left.session.startedAt, right.session.startedAt);
-    })
-    .map((entry) => ({
+      return compareSetEntryAsc(left, right);
+    });
+
+  const groups = new Map<
+    string,
+    PreviousExerciseSets & {
+      seenSessionIds: Set<string>;
+    }
+  >();
+
+  for (const entry of entries) {
+    const group = groups.get(entry.weekStart) ?? {
       weekStart: entry.weekStart,
-      sessionId: entry.session.id,
-      sessionStartedAt: entry.session.startedAt,
-      sets: entry.sets,
-    }));
+      sessionIds: [],
+      sessionStartedAts: [],
+      sets: [],
+      seenSessionIds: new Set<string>(),
+    };
+
+    if (!group.seenSessionIds.has(entry.session.id)) {
+      group.seenSessionIds.add(entry.session.id);
+      group.sessionIds.push(entry.session.id);
+      group.sessionStartedAts.push(entry.session.startedAt);
+    }
+
+    group.sets.push(entry.set);
+    groups.set(entry.weekStart, group);
+  }
+
+  return [...groups.values()].map(({ seenSessionIds: _seenSessionIds, ...group }) => group);
 }
 
 export function summarizeExerciseWeek(loggingType: LoggingType, sets: SetLog[]): string {
@@ -202,6 +239,67 @@ function groupSetsBySession(sets: SetLog[]): Map<string, SetLog[]> {
   }
 
   return grouped;
+}
+
+function getCurrentWorkoutCodes(bundle: ProgramBundle): WorkoutCode[] {
+  const workoutsById = new Map(bundle.workouts.map((workout) => [workout.id, workout]));
+
+  return bundle.currentVersion.workoutIds.map((workoutId) => {
+    const workout = workoutsById.get(workoutId);
+
+    if (!workout) {
+      throw new Error(`Workout ${workoutId} is missing from current program version ${bundle.currentVersion.id}`);
+    }
+
+    return workout.code;
+  });
+}
+
+function toLocalCalendarDate(date: Date | string): Date {
+  if (date instanceof Date) {
+    return new Date(date.getTime());
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
+
+  if (!match) {
+    throw new Error(`Invalid date: ${date}`);
+  }
+
+  const [, yearValue, monthValue, dayValue] = match;
+  const year = Number(yearValue);
+  const month = Number(monthValue);
+  const day = Number(dayValue);
+  const localDate = new Date(year, month - 1, day);
+
+  if (localDate.getFullYear() !== year || localDate.getMonth() !== month - 1 || localDate.getDate() !== day) {
+    throw new Error(`Invalid date: ${date}`);
+  }
+
+  return localDate;
+}
+
+function compareSetEntryAsc(
+  left: { session: WorkoutSession; set: SetLog },
+  right: { session: WorkoutSession; set: SetLog },
+): number {
+  const startedCompare = compareStartedAtAsc(left.session.startedAt, right.session.startedAt);
+
+  if (startedCompare !== 0) {
+    return startedCompare;
+  }
+
+  if (left.set.setIndex !== right.set.setIndex) {
+    return left.set.setIndex - right.set.setIndex;
+  }
+
+  const createdCompare = toDate(left.set.createdAt).getTime() - toDate(right.set.createdAt).getTime();
+
+  if (createdCompare !== 0) {
+    return createdCompare;
+  }
+
+  return left.set.id.localeCompare(right.set.id);
 }
 
 function compareStartedAtAsc(left: string, right: string): number {

@@ -62,10 +62,11 @@ const weightRepsSet = (
   setIndex: number,
   weightKg: number,
   reps: number,
+  createdAt = baseTimestamp,
 ): SetLog => ({
   id,
-  createdAt: baseTimestamp,
-  updatedAt: baseTimestamp,
+  createdAt,
+  updatedAt: createdAt,
   schemaVersion: 1,
   sessionId,
   exerciseId,
@@ -215,25 +216,47 @@ describe("buildExerciseSnapshots", () => {
 
 describe("suggestNextWorkoutCode", () => {
   it("starts with A when there are no completed sessions", () => {
-    expect(suggestNextWorkoutCode([])).toBe("A");
-    expect(suggestNextWorkoutCode([session("active-a", "A", "2026-06-23T10:00:00.000+03:00", "active")])).toBe(
+    expect(suggestNextWorkoutCode(initialProgram, [])).toBe("A");
+    expect(
+      suggestNextWorkoutCode(initialProgram, [session("active-a", "A", "2026-06-23T10:00:00.000+03:00", "active")]),
+    ).toBe("A");
+  });
+
+  it("cycles A to B to C to A from the latest completed session", () => {
+    expect(suggestNextWorkoutCode(initialProgram, [session("completed-a", "A", "2026-06-17T10:00:00.000+03:00")])).toBe(
+      "B",
+    );
+    expect(suggestNextWorkoutCode(initialProgram, [session("completed-b", "B", "2026-06-17T10:00:00.000+03:00")])).toBe(
+      "C",
+    );
+    expect(suggestNextWorkoutCode(initialProgram, [session("completed-c", "C", "2026-06-17T10:00:00.000+03:00")])).toBe(
       "A",
     );
   });
 
-  it("cycles A to B to C to A from the latest completed session", () => {
-    expect(suggestNextWorkoutCode([session("completed-a", "A", "2026-06-17T10:00:00.000+03:00")])).toBe("B");
-    expect(suggestNextWorkoutCode([session("completed-b", "B", "2026-06-17T10:00:00.000+03:00")])).toBe("C");
-    expect(suggestNextWorkoutCode([session("completed-c", "C", "2026-06-17T10:00:00.000+03:00")])).toBe("A");
-  });
-
   it("ignores active sessions when choosing the latest workout", () => {
     expect(
-      suggestNextWorkoutCode([
+      suggestNextWorkoutCode(initialProgram, [
         session("completed-a", "A", "2026-06-17T10:00:00.000+03:00"),
         session("active-c", "C", "2026-06-24T10:00:00.000+03:00", "active"),
       ]),
     ).toBe("B");
+  });
+
+  it("uses the current program version workout order", () => {
+    const bundle = cloneBundle();
+    bundle.currentVersion = {
+      ...bundle.currentVersion,
+      workoutIds: ["workout-c", "workout-a"],
+    };
+
+    expect(suggestNextWorkoutCode(bundle, [])).toBe("C");
+    expect(suggestNextWorkoutCode(bundle, [session("completed-c", "C", "2026-06-17T10:00:00.000+03:00")])).toBe(
+      "A",
+    );
+    expect(suggestNextWorkoutCode(bundle, [session("completed-b", "B", "2026-06-17T10:00:00.000+03:00")])).toBe(
+      "C",
+    );
   });
 });
 
@@ -241,6 +264,10 @@ describe("getWeekStart", () => {
   it("returns the local Monday date for the given week", () => {
     expect(getWeekStart(new Date("2026-06-23T12:00:00.000+03:00"))).toBe("2026-06-22");
     expect(getWeekStart(new Date("2026-06-28T12:00:00.000+03:00"))).toBe("2026-06-22");
+  });
+
+  it("uses the calendar date from ISO strings with offsets", () => {
+    expect(getWeekStart("2026-06-22T00:30:00.000+03:00")).toBe("2026-06-22");
   });
 });
 
@@ -286,14 +313,14 @@ describe("getPreviousExerciseSets", () => {
     expect(getPreviousExerciseSets("ex-bench-press", "2026-06-24T10:00:00.000+03:00", sessions, sets)).toEqual([
       {
         weekStart: "2026-06-15",
-        sessionId: "last-week",
-        sessionStartedAt: "2026-06-17T10:00:00.000+03:00",
+        sessionIds: ["last-week"],
+        sessionStartedAts: ["2026-06-17T10:00:00.000+03:00"],
         sets: [sets[2]],
       },
       {
         weekStart: "2026-06-08",
-        sessionId: "two-weeks-ago",
-        sessionStartedAt: "2026-06-10T10:00:00.000+03:00",
+        sessionIds: ["two-weeks-ago"],
+        sessionStartedAts: ["2026-06-10T10:00:00.000+03:00"],
         sets: [sets[4], sets[1]],
       },
     ]);
@@ -314,11 +341,50 @@ describe("getPreviousExerciseSets", () => {
     expect(getPreviousExerciseSets("ex-bench-press", "2026-06-24T10:00:00.000+03:00", sessions, sets)).toEqual([
       {
         weekStart: "2026-06-15",
-        sessionId: "previous-completed",
-        sessionStartedAt: "2026-06-17T10:00:00.000+03:00",
+        sessionIds: ["previous-completed"],
+        sessionStartedAts: ["2026-06-17T10:00:00.000+03:00"],
         sets: [sets[0]],
       },
     ]);
+  });
+
+  it("aggregates two completed sessions in the same previous week into one result", () => {
+    const sessions = [
+      session("last-week-late", "A", "2026-06-19T10:00:00.000+03:00"),
+      session("last-week-early", "B", "2026-06-16T10:00:00.000+03:00"),
+    ];
+    const sets = [
+      weightRepsSet(
+        "early-set-2-later-created",
+        "last-week-early",
+        "ex-bench-press",
+        2,
+        45,
+        7,
+        "2026-06-16T10:12:00.000+03:00",
+      ),
+      weightRepsSet("late-set-1", "last-week-late", "ex-bench-press", 1, 47.5, 6, "2026-06-19T10:05:00.000+03:00"),
+      weightRepsSet(
+        "early-set-2-earlier-created",
+        "last-week-early",
+        "ex-bench-press",
+        2,
+        45,
+        8,
+        "2026-06-16T10:10:00.000+03:00",
+      ),
+      weightRepsSet("early-set-1", "last-week-early", "ex-bench-press", 1, 42.5, 8, "2026-06-16T10:07:00.000+03:00"),
+    ];
+
+    const results = getPreviousExerciseSets("ex-bench-press", "2026-06-24T10:00:00.000+03:00", sessions, sets);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toEqual({
+      weekStart: "2026-06-15",
+      sessionIds: ["last-week-early", "last-week-late"],
+      sessionStartedAts: ["2026-06-16T10:00:00.000+03:00", "2026-06-19T10:00:00.000+03:00"],
+      sets: [sets[3], sets[2], sets[0], sets[1]],
+    });
   });
 });
 
