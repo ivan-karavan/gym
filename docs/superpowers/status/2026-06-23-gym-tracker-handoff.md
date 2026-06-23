@@ -3,11 +3,11 @@
 ## Branch
 
 - Current branch: `codex/gym-tracker-mvp`
-- Latest implementation commit: `6c46553 feat: add workout logging screens`
+- Latest implementation commit: `4f32f06 feat: add offline exercise assets`
 
 ## Safe Checkpoint
 
-Work is stopped after Task 6 implementation and review. All active subagents were awaited and closed.
+Work is stopped after Task 8 implementation. All active subagents were awaited and closed.
 
 Completed and accepted:
 
@@ -16,35 +16,40 @@ Completed and accepted:
 - Task 3: pure workout logic, week grouping, previous-week hints.
 - Task 4: IndexedDB repository.
 - Task 5: JSON backup/restore with strict validation.
-
-Implemented but not accepted yet:
-
 - Task 6: app state, Today screen, Active Workout screen, set editor, exercise cards.
+- Task 7: History, Program, Settings screens with JSON backup/restore confirmation.
+- Task 8: offline exercise assets.
 
-Task 6 tests/build passed before review:
+Implemented but not separately reviewed yet:
 
-- `npm run test -- src/screens/TodayScreen.test.tsx src/screens/ActiveWorkoutScreen.test.tsx`
-- `npm run build`
+- Task 8: generated offline exercise images. Worker verification passed (`OK 15 media files`, `npm run build`).
 
-Task 6 review blockers to fix next:
+Last accepted UI checkpoints:
 
-- `src/screens/TodayScreen.tsx`: start button can create multiple active sessions on fast Android double tap. Add `starting` pending guard/disabled state and preferably reject start if an active session already exists.
-- `src/screens/ActiveWorkoutScreen.tsx`: note draft can be overwritten by async reload after blur. Sync note draft only on session id change or track focused/dirty/pending state.
-- `src/components/SetEditor.tsx`: decimal weight input uses `type="number"`, fragile for Android comma decimal keyboard. Use `type="text"` with `inputMode="decimal"` and explicit comma/dot normalization.
-- `src/screens/ActiveWorkoutScreen.tsx`: completion button has no pending state. Lower priority, but should be fixed with `completing` disabled state.
+- Task 6 was accepted after fixes for double-tap start, note draft overwrite, Android comma decimal input, and complete pending state.
+- Task 7 was accepted after fixes for local-week history grouping, pre-validated restore confirmation, program image fallback, and restore input polish.
+
+Next task:
+
+- Task 9: final integration and Android-focused QA.
+- Create/update `README.md`.
+- Run `npm test` and `npm run build`.
+- Start Vite dev server and browser-check mobile viewport around `390x844`.
+- Verify Today -> Active Workout, decimal input, effort toggle, note editing, History, Program images, Settings export/restore confirmation.
+- Fix visual overlap/touch-target issues if found.
 
 ## Verification
 
-Last full checkpoint before Task 6 review:
+Recent verification:
 
-- `npm test`: 60 tests passed before Task 6.
-- `npm run build`: passed before Task 6.
+- Before Task 8, `npm test` passed with 72 tests.
+- Before Task 8, `npm run build` passed.
+- Task 8 worker verified all 15 media files exist and `npm run build` passed.
 
-After Task 6 implementation:
+Process/subagent cleanup:
 
-- UI screen tests passed, 3 tests.
-- Build passed.
-- Review blocked Task 6 on the issues above.
+- Active Task 8 subagent `019ef4e5-c0eb-7d72-9069-dd61921737af` was closed after completion.
+- Process check for `vite|vitest|tinypool|node.*Documents/gym|sharp|generate-exercise-assets` showed no leftover project processes.
 
 ## Working Tree Notes
 
