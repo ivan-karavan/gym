@@ -4,6 +4,7 @@ import { initialProgram } from "./initialProgram";
 describe("initialProgram", () => {
   it("contains workouts A, B, and C in order", () => {
     expect(initialProgram.workouts.map((workout) => workout.code)).toEqual(["A", "B", "C"]);
+    expect(initialProgram.workouts.map((workout) => workout.id)).toEqual(["workout-a", "workout-b", "workout-c"]);
   });
 
   it("uses exact workout exercise ids and targets from the plan", () => {
