@@ -7,6 +7,7 @@ import {
   suggestNextWorkoutCode,
   summarizeExerciseWeek,
 } from "../domain/workoutLogic";
+import { exportBackup, parseBackup, restoreBackup } from "../storage/backup";
 import { createGymDatabase, type GymDatabase } from "../storage/db";
 import { createRepository, type SaveSetInput } from "../storage/repository";
 import {
@@ -214,6 +215,23 @@ export function AppProvider({ children, databaseName, closeOnUnmount = false }: 
     [reload, storeState.activeSession?.id],
   );
 
+  const exportJsonBackup = useCallback<AppStoreValue["exportJsonBackup"]>(async () => {
+    const db = getDatabase(dbRef);
+
+    return exportBackup(db);
+  }, []);
+
+  const restoreJsonBackup = useCallback<AppStoreValue["restoreJsonBackup"]>(
+    async (value) => {
+      const db = getDatabase(dbRef);
+      const payload = parseBackup(value);
+
+      await restoreBackup(db, payload);
+      await reload();
+    },
+    [reload],
+  );
+
   const value = useMemo<AppStoreValue>(
     () => ({
       ...storeState,
@@ -221,9 +239,20 @@ export function AppProvider({ children, databaseName, closeOnUnmount = false }: 
       saveSet,
       updateSessionNote,
       completeActiveSession,
+      exportJsonBackup,
+      restoreJsonBackup,
       reload,
     }),
-    [completeActiveSession, reload, saveSet, startWorkout, storeState, updateSessionNote],
+    [
+      completeActiveSession,
+      exportJsonBackup,
+      reload,
+      restoreJsonBackup,
+      saveSet,
+      startWorkout,
+      storeState,
+      updateSessionNote,
+    ],
   );
 
   return <AppStoreContext.Provider value={value}>{children}</AppStoreContext.Provider>;
@@ -235,6 +264,14 @@ function getRepository(repoRef: React.MutableRefObject<Repository | null>): Repo
   }
 
   return repoRef.current;
+}
+
+function getDatabase(dbRef: React.MutableRefObject<GymDatabase | null>): GymDatabase {
+  if (!dbRef.current) {
+    throw new Error("Gym database is not ready");
+  }
+
+  return dbRef.current;
 }
 
 function addSessionId(payload: SaveSetPayload, sessionId: string): SaveSetInput {

@@ -34,6 +34,10 @@ button {
   padding: 14px;
 }
 
+.app-shell-with-bottom-nav {
+  padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+
 .screen {
   width: min(100%, 760px);
   margin: 0 auto;
@@ -135,7 +139,10 @@ button:disabled {
 .primary-button,
 .secondary-button,
 .code-button,
-.segment-button {
+.segment-button,
+.quiet-button,
+.icon-button,
+.current-week-button {
   border: 0;
   border-radius: 8px;
   font-weight: 800;
@@ -154,8 +161,117 @@ button:disabled {
   padding: 12px 16px;
 }
 
+.quiet-button {
+  background: #e6ece7;
+  color: #253138;
+  padding: 12px 16px;
+}
+
+.icon-text-button,
+.current-week-button,
+.file-restore-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .full-width {
   width: 100%;
+}
+
+.bottom-nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+  border-top: 1px solid #d7ded8;
+  background: rgba(246, 247, 244, 0.98);
+  box-shadow: 0 -8px 24px rgba(29, 36, 40, 0.08);
+}
+
+.bottom-nav-button {
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 58px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #516067;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  padding: 7px 4px;
+}
+
+.bottom-nav-button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav-button.active {
+  background: #dbe7e1;
+  color: #0e5d53;
+}
+
+.week-picker {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 8px;
+  align-items: stretch;
+  padding: 10px 0 18px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  padding: 0;
+  background: #e6ece7;
+  color: #263238;
+}
+
+.week-picker-label {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #d7ded8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 6px 10px;
+  text-align: center;
+}
+
+.week-picker-label span {
+  color: #66737a;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.week-picker-label strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #253138;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.current-week-button {
+  grid-column: 1 / -1;
+  background: #263238;
+  color: #ffffff;
+  padding: 10px 12px;
 }
 
 .today-workout {
@@ -357,13 +473,243 @@ button:disabled {
   margin: 0 auto;
 }
 
+.history-list,
+.program-workouts,
+.settings-actions {
+  display: grid;
+  gap: 14px;
+}
+
+.history-session {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #d7ded8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.history-session-header,
+.program-workout-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.history-session-header h2,
+.program-workout-header h2 {
+  margin-bottom: 0;
+}
+
+.history-exercise-list,
+.program-exercise-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-exercise-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+  border-top: 1px solid #e1e7e2;
+  padding-top: 10px;
+}
+
+.history-exercise-row div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-exercise-row span,
+.history-note {
+  color: #66737a;
+  font-size: 0.9rem;
+}
+
+.history-exercise-row p,
+.history-note {
+  margin-bottom: 0;
+}
+
+.history-exercise-row p {
+  color: #253138;
+  font-weight: 800;
+}
+
+.empty-state {
+  border-top: 1px solid #d8dfd8;
+  padding: 22px 0;
+}
+
+.program-workout {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid #d8dfd8;
+  padding-top: 18px;
+}
+
+.code-badge {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #0e5d53;
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.program-exercise {
+  overflow: hidden;
+  border: 1px solid #d7ded8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.program-exercise-media {
+  min-height: 118px;
+  background: #e6ece7;
+}
+
+.program-exercise-media img {
+  width: 100%;
+  height: 136px;
+  object-fit: cover;
+}
+
+.program-exercise-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.program-exercise-body h3 {
+  font-size: 1rem;
+}
+
+.cue-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  color: #3d4b52;
+}
+
+.settings-actions {
+  border-top: 1px solid #d8dfd8;
+  padding-top: 18px;
+}
+
+.settings-actions .primary-button {
+  width: 100%;
+}
+
+.file-restore-control {
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.file-restore-label {
+  min-height: 44px;
+  border-radius: 8px;
+  background: #263238;
+  color: #ffffff;
+  font-weight: 800;
+  padding: 12px 16px;
+}
+
+.file-restore-control input {
+  border: 0;
+  background: transparent;
+  min-height: auto;
+  padding: 0;
+}
+
+.file-restore-control input::file-selector-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: #e6ece7;
+  color: #253138;
+  font: inherit;
+  font-weight: 800;
+  margin-right: 10px;
+  padding: 10px 12px;
+}
+
+.confirmation-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  border: 1px solid #d4b15b;
+  border-radius: 8px;
+  background: #fff6dc;
+  padding: 14px;
+}
+
+.confirmation-panel h2,
+.confirmation-panel p {
+  margin-bottom: 6px;
+}
+
+.confirmation-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.status-message {
+  margin-top: 14px;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-weight: 800;
+}
+
+.status-message.success {
+  background: #dbe7e1;
+  color: #0e5d53;
+}
+
+.status-message.error {
+  background: #ffe0dc;
+  color: #92342d;
+}
+
 @media (min-width: 720px) {
   .app-shell {
     padding: 24px;
   }
 
+  .app-shell-with-bottom-nav {
+    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+  }
+
   .screen-header h1 {
     font-size: 2.35rem;
+  }
+
+  .bottom-nav {
+    right: 24px;
+    bottom: 18px;
+    left: 24px;
+    width: min(760px, calc(100% - 48px));
+    margin: 0 auto;
+    border: 1px solid #d7ded8;
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .week-picker {
+    grid-template-columns: 48px minmax(0, 1fr) 48px auto;
+  }
+
+  .current-week-button {
+    grid-column: auto;
+    min-width: 126px;
   }
 
   .exercise-card {
@@ -384,5 +730,30 @@ button:disabled {
 
   .effort-toggle {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .history-exercise-row {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
+    align-items: start;
+  }
+
+  .history-exercise-row p {
+    text-align: right;
+  }
+
+  .program-exercise {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+  }
+
+  .program-exercise-media img,
+  .program-exercise-media .exercise-image-fallback {
+    height: 100%;
+    min-height: 100%;
+  }
+
+  .settings-actions,
+  .confirmation-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { MediaAsset, ProgramBundle, SetLog, WorkoutCode, WorkoutSession } from "../domain/types";
+import type { BackupPayload } from "../storage/backup";
 import type { SaveSetInput } from "../storage/repository";
 
 type WithoutSessionId<T> = T extends { sessionId: string } ? Omit<T, "sessionId"> : never;
@@ -26,6 +27,8 @@ export interface AppStoreValue {
   saveSet: (payload: SaveSetPayload) => Promise<void>;
   updateSessionNote: (note: string) => Promise<void>;
   completeActiveSession: () => Promise<void>;
+  exportJsonBackup: () => Promise<BackupPayload>;
+  restoreJsonBackup: (value: unknown) => Promise<void>;
   reload: () => Promise<void>;
 }
 
