@@ -6,6 +6,14 @@ describe("initialProgram", () => {
     expect(initialProgram.workouts.map((workout) => workout.code)).toEqual(["A", "B", "C"]);
   });
 
+  it("uses exact workout target strings from the plan", () => {
+    expect(initialProgram.workouts.map((workout) => workout.exercises.map((exercise) => exercise.target))).toEqual([
+      ["3 x 6-8", "3 x 6-8", "3 x 8-10", "2-3 x 8-10", "3 x 30-60 sec"],
+      ["3 x 4-6", "3 x 6-8", "3 sets, not to failure", "3 x 8-10", "2-3 x 12-15"],
+      ["3 x 8", "3 x 8-10", "3 x 8-10", "2-3 x 10-12", "2-3 x 12-15"],
+    ]);
+  });
+
   it("uses stable unique exercise ids", () => {
     const ids = initialProgram.exercises.map((exercise) => exercise.id);
     expect(new Set(ids).size).toBe(ids.length);
