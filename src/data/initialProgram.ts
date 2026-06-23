@@ -20,77 +20,77 @@ const meta = (id: string): EntityMeta => ({
 const media: MediaAsset[] = [
   {
     id: "media-barbell-squat",
-    localPath: "/exercises/barbell-squat.png",
+    localPath: "exercises/barbell-squat.png",
     alt: "Присед со штангой",
   },
   {
     id: "media-bench-press",
-    localPath: "/exercises/bench-press.png",
+    localPath: "exercises/bench-press.png",
     alt: "Жим лежа",
   },
   {
     id: "media-horizontal-row",
-    localPath: "/exercises/horizontal-row.png",
+    localPath: "exercises/horizontal-row.png",
     alt: "Тяга горизонтального блока или штанги в наклоне",
   },
   {
     id: "media-romanian-deadlift",
-    localPath: "/exercises/romanian-deadlift.png",
+    localPath: "exercises/romanian-deadlift.png",
     alt: "Румынская тяга",
   },
   {
     id: "media-plank",
-    localPath: "/exercises/plank.png",
+    localPath: "exercises/plank.png",
     alt: "Планка",
   },
   {
     id: "media-deadlift",
-    localPath: "/exercises/deadlift.png",
+    localPath: "exercises/deadlift.png",
     alt: "Становая тяга классическая или трап-гриф",
   },
   {
     id: "media-overhead-press",
-    localPath: "/exercises/overhead-press.png",
+    localPath: "exercises/overhead-press.png",
     alt: "Жим гантелей сидя или армейский жим",
   },
   {
     id: "media-pull-up",
-    localPath: "/exercises/pull-up.png",
+    localPath: "exercises/pull-up.png",
     alt: "Подтягивания",
   },
   {
     id: "media-leg-press-lunge",
-    localPath: "/exercises/leg-press-lunge.png",
+    localPath: "exercises/leg-press-lunge.png",
     alt: "Жим ногами или выпады",
   },
   {
     id: "media-face-pull",
-    localPath: "/exercises/face-pull.png",
+    localPath: "exercises/face-pull.png",
     alt: "Face pull или разведения на заднюю дельту",
   },
   {
     id: "media-front-squat",
-    localPath: "/exercises/front-squat.png",
+    localPath: "exercises/front-squat.png",
     alt: "Фронтальный присед или обычный присед полегче",
   },
   {
     id: "media-incline-dumbbell-press",
-    localPath: "/exercises/incline-dumbbell-press.png",
+    localPath: "exercises/incline-dumbbell-press.png",
     alt: "Жим гантелей на наклонной скамье",
   },
   {
     id: "media-lat-pulldown",
-    localPath: "/exercises/lat-pulldown.png",
+    localPath: "exercises/lat-pulldown.png",
     alt: "Тяга верхнего блока или подтягивания",
   },
   {
     id: "media-hyperextension-leg-curl",
-    localPath: "/exercises/hyperextension-leg-curl.png",
+    localPath: "exercises/hyperextension-leg-curl.png",
     alt: "Гиперэкстензия или сгибание ног",
   },
   {
     id: "media-lateral-raise-abs",
-    localPath: "/exercises/lateral-raise-abs.png",
+    localPath: "exercises/lateral-raise-abs.png",
     alt: "Подъемы гантелей в стороны и пресс",
   },
 ];
