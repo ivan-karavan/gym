@@ -1,0 +1,20 @@
+/sw.js
+  Cache-Control: no-cache
+
+/workbox-*.js
+  Cache-Control: no-cache
+
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+/registerSW.js
+  Cache-Control: no-cache
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/exercises/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/pwa-*.png
+  Cache-Control: public, max-age=31536000, immutable
