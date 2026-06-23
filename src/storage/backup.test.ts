@@ -135,6 +135,73 @@ describe("backup", () => {
     ).toThrow(/Invalid backup/);
   });
 
+  it("rejects duplicate primary ids in store arrays", async () => {
+    const payload = await createBackupPayload();
+    const [program] = payload.programs;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        programs: [program, { ...program }],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects missing settings row and wrong settings id", async () => {
+    const payload = await createBackupPayload();
+    const [settings] = payload.settings;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        settings: [],
+      }),
+    ).toThrow(/Invalid backup/);
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        settings: [{ ...settings, id: "wrong-settings" }],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects settings when activeProgramId does not exist", async () => {
+    const payload = await createBackupPayload();
+    const [settings] = payload.settings;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        settings: [{ ...settings, activeProgramId: "missing-program" }],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects current program version when it references a missing workout", async () => {
+    const payload = await createBackupPayload();
+    const [currentVersion] = payload.programVersions;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        programVersions: [{ ...currentVersion, workoutIds: ["missing-workout"] }],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects sessions with invalid startedAt timestamps", async () => {
+    const payload = await createBackupPayload();
+    const [session] = payload.sessions;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        sessions: [{ ...session, startedAt: "not-a-date" }],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
   it("restores a valid payload and replaces existing repository data", async () => {
     const source = await createInitializedRepository("-source");
     const sourceSession = await source.repo.startWorkout("B", "2026-06-23T10:00:00.000Z");
@@ -169,5 +236,21 @@ describe("backup", () => {
     expect(restoredSessions).toEqual([sourceSession]);
     expect(restoredSets).toEqual([sourceSet]);
     expect(restoredSessions).not.toEqual([oldSession]);
+  });
+
+  it("does not clear existing data when restore payload is invalid", async () => {
+    const target = await createInitializedRepository("-invalid-restore-target");
+    const existingProgram = await target.repo.loadCurrentProgram();
+    const invalidPayload = await createBackupPayload();
+    const [program] = invalidPayload.programs;
+
+    await expect(
+      restoreBackup(target.db, {
+        ...invalidPayload,
+        programs: [program, { ...program }],
+      }),
+    ).rejects.toThrow(/Invalid backup/);
+
+    await expect(target.repo.loadCurrentProgram()).resolves.toEqual(existingProgram);
   });
 });

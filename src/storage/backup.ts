@@ -32,10 +32,16 @@ const loggingTypeSchema = z.enum(["weight_reps", "reps", "duration"]);
 const effortSchema = z.enum(["easy", "normal", "hard"]);
 const sessionStatusSchema = z.enum(["active", "completed"]);
 
+function isParseableDateString(value: string): boolean {
+  return Number.isFinite(Date.parse(value));
+}
+
+const timestampSchema = z.string().refine(isParseableDateString, "Invalid date string");
+
 const entityMetaSchema = z.object({
   id: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema,
   schemaVersion: schemaVersionSchema,
 });
 
@@ -78,7 +84,7 @@ const programVersionSchema = entityMetaSchema
   .extend({
     programId: z.string(),
     versionName: z.string(),
-    activeFrom: z.string(),
+    activeFrom: timestampSchema,
     workoutIds: z.array(z.string()),
   })
   .strict();
@@ -146,8 +152,8 @@ const workoutSessionSchema = entityMetaSchema
     workoutTemplateId: z.string(),
     workoutCode: workoutCodeSchema,
     status: sessionStatusSchema,
-    startedAt: z.string(),
-    completedAt: z.string().optional(),
+    startedAt: timestampSchema,
+    completedAt: timestampSchema.optional(),
     note: z.string(),
     exerciseSnapshots: z.array(workoutExerciseSnapshotSchema),
   })
@@ -162,7 +168,7 @@ const appSettingsSchema = entityMetaSchema
 const backupPayloadSchema = z
   .object({
     schemaVersion: schemaVersionSchema,
-    exportedAt: z.string().datetime(),
+    exportedAt: timestampSchema,
     appVersion: z.string(),
     programs: z.array(programSchema),
     programVersions: z.array(programVersionSchema),
@@ -177,6 +183,129 @@ const backupPayloadSchema = z
 
 function compareById<T extends { id: string }>(left: T, right: T): number {
   return left.id.localeCompare(right.id);
+}
+
+function idSet<T extends { id: string }>(items: readonly T[]): Set<string> {
+  return new Set(items.map((item) => item.id));
+}
+
+function findById<T extends { id: string }>(items: readonly T[], id: string): T | undefined {
+  return items.find((item) => item.id === id);
+}
+
+function collectDuplicateIds<T extends { id: string }>(path: string, items: readonly T[]): string[] {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+
+  for (const item of items) {
+    if (seen.has(item.id)) {
+      duplicates.add(item.id);
+    }
+
+    seen.add(item.id);
+  }
+
+  return Array.from(duplicates, (id) => `${path}: duplicate id "${id}"`);
+}
+
+function validateReference(issues: string[], path: string, id: string, ids: ReadonlySet<string>): void {
+  if (!ids.has(id)) {
+    issues.push(`${path}: unknown id "${id}"`);
+  }
+}
+
+function validateBackupSemantics(payload: BackupPayload): void {
+  const issues = [
+    ...collectDuplicateIds("programs", payload.programs),
+    ...collectDuplicateIds("programVersions", payload.programVersions),
+    ...collectDuplicateIds("workouts", payload.workouts),
+    ...collectDuplicateIds("exercises", payload.exercises),
+    ...collectDuplicateIds("media", payload.media),
+    ...collectDuplicateIds("sessions", payload.sessions),
+    ...collectDuplicateIds("sets", payload.sets),
+    ...collectDuplicateIds("settings", payload.settings),
+  ];
+
+  const programIds = idSet(payload.programs);
+  const programVersionIds = idSet(payload.programVersions);
+  const workoutIds = idSet(payload.workouts);
+  const exerciseIds = idSet(payload.exercises);
+  const mediaIds = idSet(payload.media);
+  const sessionIds = idSet(payload.sessions);
+
+  if (payload.settings.length !== 1) {
+    issues.push("settings: expected exactly one row");
+  }
+
+  const [settings] = payload.settings;
+
+  if (settings) {
+    if (settings.id !== "app-settings") {
+      issues.push(`settings.id: expected "app-settings", got "${settings.id}"`);
+    }
+
+    validateReference(issues, "settings.activeProgramId", settings.activeProgramId, programIds);
+  }
+
+  const activeProgram = settings ? findById(payload.programs, settings.activeProgramId) : undefined;
+  const currentVersion = activeProgram
+    ? findById(payload.programVersions, activeProgram.currentVersionId)
+    : undefined;
+
+  if (activeProgram && !currentVersion) {
+    issues.push(`programs.${activeProgram.id}.currentVersionId: unknown id "${activeProgram.currentVersionId}"`);
+  }
+
+  if (activeProgram && currentVersion && currentVersion.programId !== activeProgram.id) {
+    issues.push(
+      `programVersions.${currentVersion.id}.programId: expected "${activeProgram.id}", got "${currentVersion.programId}"`,
+    );
+  }
+
+  if (currentVersion) {
+    currentVersion.workoutIds.forEach((workoutId, index) => {
+      validateReference(issues, `programVersions.${currentVersion.id}.workoutIds.${index}`, workoutId, workoutIds);
+    });
+  }
+
+  payload.workouts.forEach((workout) => {
+    workout.exercises.forEach((exercise, index) => {
+      validateReference(issues, `workouts.${workout.id}.exercises.${index}.exerciseId`, exercise.exerciseId, exerciseIds);
+    });
+  });
+
+  payload.exercises.forEach((exercise) => {
+    validateReference(issues, `exercises.${exercise.id}.mediaId`, exercise.mediaId, mediaIds);
+  });
+
+  payload.sessions.forEach((session) => {
+    validateReference(issues, `sessions.${session.id}.programVersionId`, session.programVersionId, programVersionIds);
+    validateReference(issues, `sessions.${session.id}.workoutTemplateId`, session.workoutTemplateId, workoutIds);
+
+    session.exerciseSnapshots.forEach((snapshot, index) => {
+      validateReference(
+        issues,
+        `sessions.${session.id}.exerciseSnapshots.${index}.exerciseId`,
+        snapshot.exerciseId,
+        exerciseIds,
+      );
+      validateReference(
+        issues,
+        `sessions.${session.id}.exerciseSnapshots.${index}.mediaId`,
+        snapshot.mediaId,
+        mediaIds,
+      );
+    });
+  });
+
+  payload.sets.forEach((set) => {
+    validateReference(issues, `sets.${set.id}.sessionId`, set.sessionId, sessionIds);
+    validateReference(issues, `sets.${set.id}.exerciseId`, set.exerciseId, exerciseIds);
+  });
+
+  if (issues.length > 0) {
+    throw new Error(`Invalid backup: ${issues.join("; ")}`);
+  }
 }
 
 async function readSortedById<T extends { id: string }>(table: Table<T, string>): Promise<T[]> {
@@ -222,7 +351,11 @@ export function parseBackup(value: unknown): BackupPayload {
     throw new Error(`Invalid backup: ${details}`);
   }
 
-  return result.data as BackupPayload;
+  const payload = result.data as BackupPayload;
+
+  validateBackupSemantics(payload);
+
+  return payload;
 }
 
 export async function restoreBackup(db: GymDatabase, payload: BackupPayload): Promise<void> {
