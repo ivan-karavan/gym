@@ -624,22 +624,11 @@ button:disabled {
 }
 
 .file-restore-control input {
-  border: 0;
-  background: transparent;
-  min-height: auto;
-  padding: 0;
-}
-
-.file-restore-control input::file-selector-button {
-  min-height: 44px;
-  border: 0;
-  border-radius: 8px;
-  background: #e6ece7;
-  color: #253138;
-  font: inherit;
-  font-weight: 800;
-  margin-right: 10px;
-  padding: 10px 12px;
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .confirmation-panel {
