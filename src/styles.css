@@ -288,7 +288,7 @@ button:disabled {
 }
 
 .workout-picker {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .code-button,
@@ -296,6 +296,34 @@ button:disabled {
   background: #e6ece7;
   color: #253138;
   padding: 10px 8px;
+}
+
+.code-button {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  text-align: left;
+}
+
+.code-button-code {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.64);
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.code-button-summary {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .code-button.selected,
@@ -732,6 +760,15 @@ button:disabled {
 
   .effort-toggle {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .workout-picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .code-button {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
   }
 
   .history-exercise-row {

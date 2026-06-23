@@ -223,6 +223,7 @@ const workouts: WorkoutTemplate[] = [
     ...meta("workout-a"),
     code: "A",
     name: "Тренировка A",
+    summary: "Присед, жим лежа, горизонтальная тяга, румынская тяга, планка",
     exercises: [
       { exerciseId: "ex-barbell-squat", order: 1, target: "3 x 6-8" },
       { exerciseId: "ex-bench-press", order: 2, target: "3 x 6-8" },
@@ -235,6 +236,7 @@ const workouts: WorkoutTemplate[] = [
     ...meta("workout-b"),
     code: "B",
     name: "Тренировка B",
+    summary: "Становая, вертикальный жим, подтягивания, ноги, задняя дельта",
     exercises: [
       { exerciseId: "ex-deadlift", order: 1, target: "3 x 4-6" },
       { exerciseId: "ex-overhead-press", order: 2, target: "3 x 6-8" },
@@ -247,6 +249,7 @@ const workouts: WorkoutTemplate[] = [
     ...meta("workout-c"),
     code: "C",
     name: "Тренировка C",
+    summary: "Легкий присед, наклонный жим, верхняя тяга, задняя поверхность, плечи и пресс",
     exercises: [
       { exerciseId: "ex-front-squat-light", order: 1, target: "3 x 8" },
       { exerciseId: "ex-incline-dumbbell-press", order: 2, target: "3 x 8-10" },

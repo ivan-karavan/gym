@@ -35,6 +35,7 @@ export interface WorkoutExerciseTemplate {
 export interface WorkoutTemplate extends EntityMeta {
   code: WorkoutCode;
   name: string;
+  summary?: string;
   exercises: WorkoutExerciseTemplate[];
 }
 

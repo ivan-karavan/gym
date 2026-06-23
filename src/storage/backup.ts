@@ -83,6 +83,7 @@ const workoutTemplateSchema = entityMetaSchema
   .extend({
     code: workoutCodeSchema,
     name: z.string(),
+    summary: z.string().optional(),
     exercises: z.array(workoutExerciseTemplateSchema),
   })
   .strict();

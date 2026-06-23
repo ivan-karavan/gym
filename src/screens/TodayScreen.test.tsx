@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppStoreContext, type AppStoreValue } from "../app/useAppStore";
 import { initialProgram } from "../data/initialProgram";
-import type { MediaAsset } from "../domain/types";
+import type { MediaAsset, ProgramBundle } from "../domain/types";
 import { TodayScreen } from "./TodayScreen";
 
 const mediaById = Object.fromEntries(initialProgram.media.map((media) => [media.id, media])) as Record<
@@ -58,10 +58,30 @@ describe("TodayScreen", () => {
     expect(screen.getByRole("heading", { name: "Сегодня" })).toBeInTheDocument();
     expect(screen.getByText("Следующая по плану: Тренировка A")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "B" }));
+    expect(screen.getByText("Присед, жим лежа, горизонтальная тяга, румынская тяга, планка")).toBeInTheDocument();
+    expect(screen.getByText("Становая, вертикальный жим, подтягивания, ноги, задняя дельта")).toBeInTheDocument();
+    expect(screen.getByText("Легкий присед, наклонный жим, верхняя тяга, задняя поверхность, плечи и пресс")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Выбрать тренировку B" }));
     await user.click(screen.getByRole("button", { name: "Начать тренировку B" }));
 
     expect(startWorkout).toHaveBeenCalledWith("B");
+  });
+
+  it("uses concise summaries for older persisted seed workouts without summary fields", () => {
+    const bundleWithoutSummaries: ProgramBundle = {
+      ...initialProgram,
+      workouts: initialProgram.workouts.map(({ summary: _summary, ...workout }) => workout),
+    };
+
+    renderWithStore({ programBundle: bundleWithoutSummaries, suggestedWorkout: "A" }, <TodayScreen />);
+
+    expect(screen.getByText("Присед, жим лежа, горизонтальная тяга, румынская тяга, планка")).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Присед со штангой, Жим лежа, Тяга горизонтального блока или штанги в наклоне, Румынская тяга, Планка",
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("disables start while the first workout start is pending", async () => {

@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "../app/useAppStore";
-import type { WorkoutCode } from "../domain/types";
+import type { Exercise, WorkoutCode, WorkoutTemplate } from "../domain/types";
+
+const seedWorkoutSummaries: Record<string, string> = {
+  "workout-a": "Присед, жим лежа, горизонтальная тяга, румынская тяга, планка",
+  "workout-b": "Становая, вертикальный жим, подтягивания, ноги, задняя дельта",
+  "workout-c": "Легкий присед, наклонный жим, верхняя тяга, задняя поверхность, плечи и пресс",
+};
 
 export function TodayScreen() {
   const { activeSession, programBundle, suggestedWorkout, startWorkout } = useAppStore();
   const workoutOptions = useMemo(() => programBundle?.workouts ?? [], [programBundle?.workouts]);
+  const exerciseNamesById = useMemo(() => buildExerciseNameMap(programBundle?.exercises ?? []), [programBundle?.exercises]);
   const fallbackWorkout = workoutOptions[0]?.code ?? "A";
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutCode>(suggestedWorkout ?? fallbackWorkout);
   const [starting, setStarting] = useState(false);
@@ -36,17 +43,23 @@ export function TodayScreen() {
         </div>
 
         <div className="workout-picker" role="group" aria-label="Выбор тренировки">
-          {workoutOptions.map((workout) => (
-            <button
-              className={workout.code === selectedWorkout ? "code-button selected" : "code-button"}
-              type="button"
-              aria-pressed={workout.code === selectedWorkout}
-              key={workout.id}
-              onClick={() => setSelectedWorkout(workout.code)}
-            >
-              {workout.code}
-            </button>
-          ))}
+          {workoutOptions.map((workout) => {
+            const summary = getWorkoutSummary(workout, exerciseNamesById);
+
+            return (
+              <button
+                className={workout.code === selectedWorkout ? "code-button selected" : "code-button"}
+                type="button"
+                aria-label={`Выбрать тренировку ${workout.code}`}
+                aria-pressed={workout.code === selectedWorkout}
+                key={workout.id}
+                onClick={() => setSelectedWorkout(workout.code)}
+              >
+                <span className="code-button-code">{workout.code}</span>
+                <span className="code-button-summary">{summary}</span>
+              </button>
+            );
+          })}
         </div>
 
         <button
@@ -74,4 +87,24 @@ export function TodayScreen() {
       setStarting(false);
     }
   }
+}
+
+function buildExerciseNameMap(exercises: Exercise[]): Map<string, string> {
+  return new Map(exercises.map((exercise) => [exercise.id, exercise.name]));
+}
+
+function getWorkoutSummary(workout: WorkoutTemplate, exerciseNamesById: Map<string, string>): string {
+  if (workout.summary?.trim()) {
+    return workout.summary;
+  }
+
+  const seedSummary = seedWorkoutSummaries[workout.id];
+  if (seedSummary) {
+    return seedSummary;
+  }
+
+  return workout.exercises
+    .map((exercise) => exerciseNamesById.get(exercise.exerciseId))
+    .filter((name): name is string => Boolean(name))
+    .join(", ");
 }
