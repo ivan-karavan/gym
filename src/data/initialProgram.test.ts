@@ -1,11 +1,36 @@
 import { describe, expect, it } from "vitest";
+import type { EntityMeta, SchemaVersion } from "../domain/types";
 import { initialProgram } from "./initialProgram";
 
 const expectUniqueIds = (ids: string[]) => {
   expect(new Set(ids).size).toBe(ids.length);
 };
 
+const seedEntities = (): EntityMeta[] => [
+  initialProgram.program,
+  ...initialProgram.versions,
+  ...initialProgram.workouts,
+  ...initialProgram.exercises,
+  ...initialProgram.media,
+];
+
 describe("initialProgram", () => {
+  it("uses stable program and version ids from the plan", () => {
+    expect(initialProgram.program.id).toBe("program-full-body-2026-06");
+    expect(initialProgram.program.currentVersionId).toBe("program-version-full-body-2026-06-23");
+    expect(initialProgram.currentVersion.id).toBe("program-version-full-body-2026-06-23");
+    expect(initialProgram.currentVersion.programId).toBe("program-full-body-2026-06");
+    expect(initialProgram.versions.map((version) => version.id)).toEqual(["program-version-full-body-2026-06-23"]);
+  });
+
+  it("uses the current persisted schema version for seed entities", () => {
+    const currentSchemaVersion: SchemaVersion = 1;
+
+    for (const entity of seedEntities()) {
+      expect(entity.schemaVersion).toBe(currentSchemaVersion);
+    }
+  });
+
   it("contains workouts A, B, and C in order", () => {
     expect(initialProgram.workouts.map((workout) => workout.code)).toEqual(["A", "B", "C"]);
     expect(initialProgram.workouts.map((workout) => workout.id)).toEqual(["workout-a", "workout-b", "workout-c"]);

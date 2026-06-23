@@ -2,12 +2,13 @@ export type WorkoutCode = "A" | "B" | "C";
 export type LoggingType = "weight_reps" | "reps" | "duration";
 export type Effort = "easy" | "normal" | "hard";
 export type SessionStatus = "active" | "completed";
+export type SchemaVersion = 1;
 
 export interface EntityMeta {
   id: string;
   createdAt: string;
   updatedAt: string;
-  schemaVersion: number;
+  schemaVersion: SchemaVersion;
 }
 
 export interface MediaAsset extends EntityMeta {

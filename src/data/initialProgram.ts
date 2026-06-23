@@ -258,13 +258,13 @@ const workouts: WorkoutTemplate[] = [
 ];
 
 const program: Program = {
-  ...meta("program-full-body-return"),
+  ...meta("program-full-body-2026-06"),
   name: "Full-body 3x/week: возвращение регулярности",
-  currentVersionId: "program-version-full-body-return-v1",
+  currentVersionId: "program-version-full-body-2026-06-23",
 };
 
 const version: ProgramVersion = {
-  ...meta("program-version-full-body-return-v1"),
+  ...meta("program-version-full-body-2026-06-23"),
   programId: program.id,
   versionName: "Initial 6-8 week full-body plan",
   activeFrom: now,
