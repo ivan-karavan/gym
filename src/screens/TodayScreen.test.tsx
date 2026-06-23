@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -49,4 +49,34 @@ describe("TodayScreen", () => {
 
     expect(startWorkout).toHaveBeenCalledWith("B");
   });
+
+  it("disables start while the first workout start is pending", async () => {
+    const user = userEvent.setup();
+    const startDeferred = createDeferred<void>();
+    const startWorkout = vi.fn().mockReturnValue(startDeferred.promise);
+
+    renderWithStore({ startWorkout, suggestedWorkout: "A" }, <TodayScreen />);
+
+    await user.dblClick(screen.getByRole("button", { name: "Начать тренировку A" }));
+
+    expect(startWorkout).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "Начинаю..." })).toBeDisabled();
+
+    startDeferred.resolve();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Начать тренировку A" })).not.toBeDisabled();
+    });
+  });
 });
+
+function createDeferred<T>() {
+  let resolve: (value: T | PromiseLike<T>) => void = () => undefined;
+  let reject: (reason?: unknown) => void = () => undefined;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}

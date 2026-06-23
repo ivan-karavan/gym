@@ -75,9 +75,7 @@ export function SetEditor({ exercise, nextSetIndex, onSave }: SetEditorProps) {
                 value={weightKg}
                 onChange={(event) => setWeightKg(event.target.value)}
                 inputMode="decimal"
-                type="number"
-                min="0"
-                step="0.5"
+                type="text"
               />
             </label>
             <label>

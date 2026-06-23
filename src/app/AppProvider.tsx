@@ -54,6 +54,8 @@ const previousWeekLabels = ["Прошлая неделя", "2 недели на�
 export function AppProvider({ children, databaseName, closeOnUnmount = false }: AppProviderProps) {
   const dbRef = useRef<GymDatabase | null>(null);
   const repoRef = useRef<Repository | null>(null);
+  const startWorkoutInFlightRef = useRef<Promise<void> | null>(null);
+  const completeInFlightRef = useRef<Promise<void> | null>(null);
   const [storeState, setStoreState] = useState<AppStoreState>(emptyState);
 
   if (!dbRef.current || !repoRef.current) {
@@ -119,12 +121,36 @@ export function AppProvider({ children, databaseName, closeOnUnmount = false }: 
 
   const startWorkout = useCallback<AppStoreValue["startWorkout"]>(
     async (code) => {
-      const repo = getRepository(repoRef);
+      if (storeState.activeSession) {
+        return;
+      }
 
-      await repo.startWorkout(code);
-      await reload();
+      if (startWorkoutInFlightRef.current) {
+        return startWorkoutInFlightRef.current;
+      }
+
+      const repo = getRepository(repoRef);
+      const startPromise = (async () => {
+        const existingActiveSession = await repo.loadActiveSession();
+
+        if (!existingActiveSession) {
+          await repo.startWorkout(code);
+        }
+
+        await reload();
+      })();
+
+      startWorkoutInFlightRef.current = startPromise;
+
+      try {
+        await startPromise;
+      } finally {
+        if (startWorkoutInFlightRef.current === startPromise) {
+          startWorkoutInFlightRef.current = null;
+        }
+      }
     },
-    [reload],
+    [reload, storeState.activeSession],
   );
 
   const saveSet = useCallback<AppStoreValue["saveSet"]>(
@@ -159,15 +185,31 @@ export function AppProvider({ children, databaseName, closeOnUnmount = false }: 
 
   const completeActiveSession = useCallback<AppStoreValue["completeActiveSession"]>(
     async () => {
-      const repo = getRepository(repoRef);
       const sessionId = storeState.activeSession?.id;
 
       if (!sessionId) {
         return;
       }
 
-      await repo.completeSession(sessionId);
-      await reload();
+      if (completeInFlightRef.current) {
+        return completeInFlightRef.current;
+      }
+
+      const repo = getRepository(repoRef);
+      const completePromise = (async () => {
+        await repo.completeSession(sessionId);
+        await reload();
+      })();
+
+      completeInFlightRef.current = completePromise;
+
+      try {
+        await completePromise;
+      } finally {
+        if (completeInFlightRef.current === completePromise) {
+          completeInFlightRef.current = null;
+        }
+      }
     },
     [reload, storeState.activeSession?.id],
   );

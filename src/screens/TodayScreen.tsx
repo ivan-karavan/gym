@@ -3,11 +3,13 @@ import { useAppStore } from "../app/useAppStore";
 import type { WorkoutCode } from "../domain/types";
 
 export function TodayScreen() {
-  const { programBundle, suggestedWorkout, startWorkout } = useAppStore();
+  const { activeSession, programBundle, suggestedWorkout, startWorkout } = useAppStore();
   const workoutOptions = useMemo(() => programBundle?.workouts ?? [], [programBundle?.workouts]);
   const fallbackWorkout = workoutOptions[0]?.code ?? "A";
   const [selectedWorkout, setSelectedWorkout] = useState<WorkoutCode>(suggestedWorkout ?? fallbackWorkout);
+  const [starting, setStarting] = useState(false);
   const selectedTemplate = workoutOptions.find((workout) => workout.code === selectedWorkout);
+  const startDisabled = starting || activeSession !== null;
 
   useEffect(() => {
     if (suggestedWorkout) {
@@ -47,10 +49,29 @@ export function TodayScreen() {
           ))}
         </div>
 
-        <button className="primary-button full-width" type="button" onClick={() => void startWorkout(selectedWorkout)}>
-          Начать тренировку {selectedWorkout}
+        <button
+          className="primary-button full-width"
+          type="button"
+          disabled={startDisabled}
+          onClick={() => void handleStartWorkout()}
+        >
+          {starting ? "Начинаю..." : `Начать тренировку ${selectedWorkout}`}
         </button>
       </div>
     </section>
   );
+
+  async function handleStartWorkout() {
+    if (startDisabled) {
+      return;
+    }
+
+    setStarting(true);
+
+    try {
+      await startWorkout(selectedWorkout);
+    } finally {
+      setStarting(false);
+    }
+  }
 }

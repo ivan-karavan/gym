@@ -13,6 +13,7 @@ export function ActiveWorkoutScreen() {
     completeActiveSession,
   } = useAppStore();
   const [note, setNote] = useState(activeSession?.note ?? "");
+  const [completing, setCompleting] = useState(false);
   const setsByExercise = useMemo(() => {
     const grouped = new Map<string, typeof sets>();
 
@@ -29,7 +30,7 @@ export function ActiveWorkoutScreen() {
 
   useEffect(() => {
     setNote(activeSession?.note ?? "");
-  }, [activeSession?.id, activeSession?.note]);
+  }, [activeSession?.id]);
 
   if (!activeSession) {
     return (
@@ -40,15 +41,21 @@ export function ActiveWorkoutScreen() {
   }
 
   async function handleComplete() {
-    if (!activeSession) {
+    if (!activeSession || completing) {
       return;
     }
 
-    if (note !== activeSession.note) {
-      await updateSessionNote(note);
-    }
+    setCompleting(true);
 
-    await completeActiveSession();
+    try {
+      if (note !== activeSession.note) {
+        await updateSessionNote(note);
+      }
+
+      await completeActiveSession();
+    } finally {
+      setCompleting(false);
+    }
   }
 
   return (
@@ -91,8 +98,13 @@ export function ActiveWorkoutScreen() {
       </div>
 
       <div className="complete-bar">
-        <button className="secondary-button full-width" type="button" onClick={() => void handleComplete()}>
-          Завершить тренировку
+        <button
+          className="secondary-button full-width"
+          type="button"
+          disabled={completing}
+          onClick={() => void handleComplete()}
+        >
+          {completing ? "Завершаю..." : "Завершить тренировку"}
         </button>
       </div>
     </section>

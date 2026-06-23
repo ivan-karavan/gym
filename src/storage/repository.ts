@@ -205,23 +205,32 @@ export function createRepository(db: GymDatabase) {
   async function startWorkout(code: WorkoutCode, startedAt = nowIso()): Promise<WorkoutSession> {
     const bundle = await loadCurrentProgram();
     const workout = getWorkoutByCode(bundle, code);
-    const session: WorkoutSession = {
-      id: makeId("session"),
-      createdAt: startedAt,
-      updatedAt: startedAt,
-      schemaVersion: 1,
-      programVersionId: bundle.currentVersion.id,
-      workoutTemplateId: workout.id,
-      workoutCode: code,
-      status: "active",
-      startedAt,
-      note: "",
-      exerciseSnapshots: buildExerciseSnapshots(bundle, workout),
-    };
 
-    await db.sessions.put(session);
+    return db.transaction("rw", db.sessions, async () => {
+      const activeSession = await loadActiveSession();
 
-    return session;
+      if (activeSession) {
+        return activeSession;
+      }
+
+      const session: WorkoutSession = {
+        id: makeId("session"),
+        createdAt: startedAt,
+        updatedAt: startedAt,
+        schemaVersion: 1,
+        programVersionId: bundle.currentVersion.id,
+        workoutTemplateId: workout.id,
+        workoutCode: code,
+        status: "active",
+        startedAt,
+        note: "",
+        exerciseSnapshots: buildExerciseSnapshots(bundle, workout),
+      };
+
+      await db.sessions.put(session);
+
+      return session;
+    });
   }
 
   async function saveSet(input: SaveSetInput): Promise<SetLog> {

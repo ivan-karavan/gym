@@ -95,6 +95,22 @@ describe("repository", () => {
     expect((await repo.loadSessions())[0]?.exerciseSnapshots[0]?.exerciseName).toBe("Присед со штангой");
   });
 
+  it("keeps only one active session when workout start is requested concurrently", async () => {
+    const repo = createTestRepository();
+    await repo.initialize(initialProgram);
+
+    const [first, second] = await Promise.all([
+      repo.startWorkout("A", "2026-06-23T10:00:00.000Z"),
+      repo.startWorkout("B", "2026-06-23T10:01:00.000Z"),
+    ]);
+
+    const sessions = await repo.loadSessions();
+
+    expect(second.id).toBe(first.id);
+    expect(sessions).toEqual([first]);
+    expect((await repo.loadActiveSession())?.id).toBe(first.id);
+  });
+
   it("saves decimal weights and replaces the same session exercise set index without changing id or createdAt", async () => {
     const repo = createTestRepository();
     await repo.initialize(initialProgram);
