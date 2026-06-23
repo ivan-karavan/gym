@@ -31,12 +31,19 @@ const workoutCodeSchema = z.enum(["A", "B", "C"]);
 const loggingTypeSchema = z.enum(["weight_reps", "reps", "duration"]);
 const effortSchema = z.enum(["easy", "normal", "hard"]);
 const sessionStatusSchema = z.enum(["active", "completed"]);
+const canonicalUtcTimestampPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
-function isParseableDateString(value: string): boolean {
-  return Number.isFinite(Date.parse(value));
+function isCanonicalUtcTimestamp(value: string): boolean {
+  if (!canonicalUtcTimestampPattern.test(value)) {
+    return false;
+  }
+
+  const date = new Date(value);
+
+  return Number.isFinite(date.getTime()) && date.toISOString() === value;
 }
 
-const timestampSchema = z.string().refine(isParseableDateString, "Invalid date string");
+const timestampSchema = z.string().refine(isCanonicalUtcTimestamp, "Invalid timestamp");
 
 const entityMetaSchema = z.object({
   id: z.string(),
@@ -189,8 +196,8 @@ function idSet<T extends { id: string }>(items: readonly T[]): Set<string> {
   return new Set(items.map((item) => item.id));
 }
 
-function findById<T extends { id: string }>(items: readonly T[], id: string): T | undefined {
-  return items.find((item) => item.id === id);
+function mapById<T extends { id: string }>(items: readonly T[]): Map<string, T> {
+  return new Map(items.map((item) => [item.id, item]));
 }
 
 function collectDuplicateIds<T extends { id: string }>(path: string, items: readonly T[]): string[] {
@@ -214,6 +221,20 @@ function validateReference(issues: string[], path: string, id: string, ids: Read
   }
 }
 
+function sameStringSet(left: ReadonlySet<string>, right: ReadonlySet<string>): boolean {
+  if (left.size !== right.size) {
+    return false;
+  }
+
+  for (const value of left) {
+    if (!right.has(value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 function validateBackupSemantics(payload: BackupPayload): void {
   const issues = [
     ...collectDuplicateIds("programs", payload.programs),
@@ -232,6 +253,10 @@ function validateBackupSemantics(payload: BackupPayload): void {
   const exerciseIds = idSet(payload.exercises);
   const mediaIds = idSet(payload.media);
   const sessionIds = idSet(payload.sessions);
+  const programVersionsById = mapById(payload.programVersions);
+  const workoutsById = mapById(payload.workouts);
+  const exercisesById = mapById(payload.exercises);
+  const sessionsById = mapById(payload.sessions);
 
   if (payload.settings.length !== 1) {
     issues.push("settings: expected exactly one row");
@@ -247,26 +272,25 @@ function validateBackupSemantics(payload: BackupPayload): void {
     validateReference(issues, "settings.activeProgramId", settings.activeProgramId, programIds);
   }
 
-  const activeProgram = settings ? findById(payload.programs, settings.activeProgramId) : undefined;
-  const currentVersion = activeProgram
-    ? findById(payload.programVersions, activeProgram.currentVersionId)
-    : undefined;
+  payload.programs.forEach((program) => {
+    validateReference(issues, `programs.${program.id}.currentVersionId`, program.currentVersionId, programVersionIds);
 
-  if (activeProgram && !currentVersion) {
-    issues.push(`programs.${activeProgram.id}.currentVersionId: unknown id "${activeProgram.currentVersionId}"`);
-  }
+    const currentVersion = programVersionsById.get(program.currentVersionId);
 
-  if (activeProgram && currentVersion && currentVersion.programId !== activeProgram.id) {
-    issues.push(
-      `programVersions.${currentVersion.id}.programId: expected "${activeProgram.id}", got "${currentVersion.programId}"`,
-    );
-  }
+    if (currentVersion && currentVersion.programId !== program.id) {
+      issues.push(
+        `programs.${program.id}.currentVersionId: version "${program.currentVersionId}" belongs to program "${currentVersion.programId}"`,
+      );
+    }
+  });
 
-  if (currentVersion) {
-    currentVersion.workoutIds.forEach((workoutId, index) => {
-      validateReference(issues, `programVersions.${currentVersion.id}.workoutIds.${index}`, workoutId, workoutIds);
+  payload.programVersions.forEach((programVersion) => {
+    validateReference(issues, `programVersions.${programVersion.id}.programId`, programVersion.programId, programIds);
+
+    programVersion.workoutIds.forEach((workoutId, index) => {
+      validateReference(issues, `programVersions.${programVersion.id}.workoutIds.${index}`, workoutId, workoutIds);
     });
-  }
+  });
 
   payload.workouts.forEach((workout) => {
     workout.exercises.forEach((exercise, index) => {
@@ -282,6 +306,60 @@ function validateBackupSemantics(payload: BackupPayload): void {
     validateReference(issues, `sessions.${session.id}.programVersionId`, session.programVersionId, programVersionIds);
     validateReference(issues, `sessions.${session.id}.workoutTemplateId`, session.workoutTemplateId, workoutIds);
 
+    const programVersion = programVersionsById.get(session.programVersionId);
+    const workout = workoutsById.get(session.workoutTemplateId);
+
+    if (programVersion && !programVersion.workoutIds.includes(session.workoutTemplateId)) {
+      issues.push(
+        `sessions.${session.id}.workoutTemplateId: workout "${session.workoutTemplateId}" is not part of program version "${session.programVersionId}"`,
+      );
+    }
+
+    if (workout && session.workoutCode !== workout.code) {
+      issues.push(`sessions.${session.id}.workoutCode: expected "${workout.code}", got "${session.workoutCode}"`);
+    }
+
+    if (workout) {
+      const templateExercisesById = new Map(workout.exercises.map((exercise) => [exercise.exerciseId, exercise]));
+      const templateExerciseIds = new Set(templateExercisesById.keys());
+      const snapshotExerciseIds = new Set(session.exerciseSnapshots.map((snapshot) => snapshot.exerciseId));
+
+      if (
+        session.exerciseSnapshots.length !== workout.exercises.length ||
+        !sameStringSet(snapshotExerciseIds, templateExerciseIds)
+      ) {
+        issues.push(
+          `sessions.${session.id}.exerciseSnapshots: expected exercise ids "${Array.from(templateExerciseIds).join(", ")}"`,
+        );
+      }
+
+      session.exerciseSnapshots.forEach((snapshot, index) => {
+        const templateExercise = templateExercisesById.get(snapshot.exerciseId);
+
+        if (!templateExercise) {
+          return;
+        }
+
+        if (snapshot.workoutCode !== workout.code) {
+          issues.push(
+            `sessions.${session.id}.exerciseSnapshots.${index}.workoutCode: expected "${workout.code}", got "${snapshot.workoutCode}"`,
+          );
+        }
+
+        if (snapshot.order !== templateExercise.order) {
+          issues.push(
+            `sessions.${session.id}.exerciseSnapshots.${index}.order: expected "${templateExercise.order}", got "${snapshot.order}"`,
+          );
+        }
+
+        if (snapshot.target !== templateExercise.target) {
+          issues.push(
+            `sessions.${session.id}.exerciseSnapshots.${index}.target: expected "${templateExercise.target}", got "${snapshot.target}"`,
+          );
+        }
+      });
+    }
+
     session.exerciseSnapshots.forEach((snapshot, index) => {
       validateReference(
         issues,
@@ -295,12 +373,36 @@ function validateBackupSemantics(payload: BackupPayload): void {
         snapshot.mediaId,
         mediaIds,
       );
+
+      const exercise = exercisesById.get(snapshot.exerciseId);
+
+      if (exercise && snapshot.loggingType !== exercise.loggingType) {
+        issues.push(
+          `sessions.${session.id}.exerciseSnapshots.${index}.loggingType: expected "${exercise.loggingType}", got "${snapshot.loggingType}"`,
+        );
+      }
     });
   });
 
   payload.sets.forEach((set) => {
     validateReference(issues, `sets.${set.id}.sessionId`, set.sessionId, sessionIds);
     validateReference(issues, `sets.${set.id}.exerciseId`, set.exerciseId, exerciseIds);
+
+    const session = sessionsById.get(set.sessionId);
+    const exercise = exercisesById.get(set.exerciseId);
+    const snapshot = session?.exerciseSnapshots.find((item) => item.exerciseId === set.exerciseId);
+
+    if (session && !snapshot) {
+      issues.push(`sets.${set.id}.exerciseId: exercise "${set.exerciseId}" is not part of session "${set.sessionId}"`);
+    }
+
+    if (snapshot && set.loggingType !== snapshot.loggingType) {
+      issues.push(`sets.${set.id}.loggingType: expected "${snapshot.loggingType}", got "${set.loggingType}"`);
+    }
+
+    if (exercise && set.loggingType !== exercise.loggingType) {
+      issues.push(`sets.${set.id}.loggingType: expected exercise logging type "${exercise.loggingType}", got "${set.loggingType}"`);
+    }
   });
 
   if (issues.length > 0) {

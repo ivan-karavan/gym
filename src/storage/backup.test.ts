@@ -202,6 +202,148 @@ describe("backup", () => {
     ).toThrow(/Invalid backup/);
   });
 
+  it("rejects non-canonical UTC timestamps", async () => {
+    const payload = await createBackupPayload();
+
+    for (const exportedAt of ["1", "2026-02-31T00:00:00.000Z", "06/23/2026"]) {
+      expect(() =>
+        parseBackup({
+          ...payload,
+          exportedAt,
+        }),
+      ).toThrow(/Invalid backup/);
+    }
+  });
+
+  it("rejects non-active program versions with missing program or workout references", async () => {
+    const payload = await createBackupPayload();
+    const [currentVersion] = payload.programVersions;
+    const retiredVersion = {
+      ...currentVersion,
+      id: "program-version-retired",
+    };
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        programVersions: [
+          currentVersion,
+          {
+            ...retiredVersion,
+            programId: "missing-program",
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        programVersions: [
+          currentVersion,
+          {
+            ...retiredVersion,
+            workoutIds: ["missing-workout"],
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects current program versions that belong to another program", async () => {
+    const payload = await createBackupPayload();
+    const [program] = payload.programs;
+    const [currentVersion] = payload.programVersions;
+    const otherProgram = {
+      ...program,
+      id: "program-other",
+      currentVersionId: currentVersion.id,
+    };
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        programs: [program, otherProgram],
+        programVersions: [
+          {
+            ...currentVersion,
+            programId: otherProgram.id,
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects sessions whose workout template is outside their program version", async () => {
+    const payload = await createBackupPayload();
+    const [currentVersion] = payload.programVersions;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        programVersions: [
+          {
+            ...currentVersion,
+            workoutIds: currentVersion.workoutIds.filter((workoutId) => workoutId !== "workout-a"),
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects sessions whose workout code mismatches the referenced workout", async () => {
+    const payload = await createBackupPayload();
+    const [session] = payload.sessions;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        sessions: [
+          {
+            ...session,
+            workoutCode: "B",
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects sets for exercises absent from their session snapshot", async () => {
+    const payload = await createBackupPayload();
+    const [set] = payload.sets;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        sets: [
+          {
+            ...set,
+            exerciseId: "ex-deadlift",
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
+  it("rejects sets whose logging type mismatches the session snapshot", async () => {
+    const payload = await createBackupPayload();
+    const [set] = payload.sets;
+    const { weightKg: _weightKg, ...setWithoutWeight } = set;
+
+    expect(() =>
+      parseBackup({
+        ...payload,
+        sets: [
+          {
+            ...setWithoutWeight,
+            loggingType: "reps",
+            reps: 8,
+          },
+        ],
+      }),
+    ).toThrow(/Invalid backup/);
+  });
+
   it("restores a valid payload and replaces existing repository data", async () => {
     const source = await createInitializedRepository("-source");
     const sourceSession = await source.repo.startWorkout("B", "2026-06-23T10:00:00.000Z");
