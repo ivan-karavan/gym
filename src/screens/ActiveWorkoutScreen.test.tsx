@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppStoreContext, type AppStoreValue, type PreviousWeekHint } from "../app/useAppStore";
 import { initialProgram } from "../data/initialProgram";
-import type { MediaAsset, WorkoutCode, WorkoutSession } from "../domain/types";
+import type { MediaAsset, SetLog, WorkoutCode, WorkoutSession } from "../domain/types";
 import { buildExerciseSnapshots, getWorkoutByCode } from "../domain/workoutLogic";
 import { ActiveWorkoutScreen } from "./ActiveWorkoutScreen";
 
@@ -126,6 +126,31 @@ describe("ActiveWorkoutScreen", () => {
     });
     expect(saveSet.mock.calls[0]?.[0]).not.toHaveProperty("weightKg");
     expect(saveSet.mock.calls[0]?.[0]).not.toHaveProperty("reps");
+  });
+
+  it("shows notes saved on completed sets", () => {
+    const activeSession = createSession("A");
+    const sets: SetLog[] = [
+      {
+        id: "set-1",
+        createdAt: activeSession.startedAt,
+        updatedAt: activeSession.startedAt,
+        schemaVersion: 1,
+        sessionId: activeSession.id,
+        exerciseId: "ex-barbell-squat",
+        setIndex: 1,
+        loggingType: "weight_reps",
+        weightKg: 42.5,
+        reps: 8,
+        effort: "hard",
+        note: "Глубина ок, темп контролировал.",
+      },
+    ];
+
+    renderWithStore({ activeSession, sets }, <ActiveWorkoutScreen />);
+
+    const card = screen.getByRole("article", { name: "Присед со штангой" });
+    expect(within(card).getByText("Глубина ок, темп контролировал.")).toBeInTheDocument();
   });
 
   it("keeps the local note draft when a reload updates the same active session", async () => {

@@ -422,6 +422,19 @@ button:disabled {
   min-width: 0;
 }
 
+.set-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.set-note {
+  margin-bottom: 0;
+  color: #66737a;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
 .set-list {
   display: grid;
   gap: 6px;

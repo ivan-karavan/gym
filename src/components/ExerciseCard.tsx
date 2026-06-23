@@ -55,7 +55,10 @@ export function ExerciseCard({ exercise, media, sets, previousWeeks, onSaveSet }
               {sets.map((set) => (
                 <li key={set.id}>
                   <span>{set.setIndex}</span>
-                  <strong>{formatSet(set)}</strong>
+                  <div className="set-summary">
+                    <strong>{formatSet(set)}</strong>
+                    {set.note?.trim() ? <p className="set-note">{set.note}</p> : null}
+                  </div>
                   <em>{formatEffort(set.effort)}</em>
                 </li>
               ))}
