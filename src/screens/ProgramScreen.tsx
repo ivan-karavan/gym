@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { getPublicAssetPath } from "../app/assetPath";
 import { useAppStore } from "../app/useAppStore";
 import type { Exercise, MediaAsset, ProgramBundle, WorkoutTemplate } from "../domain/types";
 
@@ -68,7 +69,7 @@ function ProgramExercise({ exercise, media, order, target }: ProgramExerciseProp
       ? {
           alt: media.alt,
           localPath: media.localPath,
-          src: getRelativeMediaPath(media.localPath),
+          src: getPublicAssetPath(media.localPath),
         }
       : null;
 
@@ -103,10 +104,6 @@ function ProgramExercise({ exercise, media, order, target }: ProgramExerciseProp
       </div>
     </article>
   );
-}
-
-function getRelativeMediaPath(localPath: string): string {
-  return localPath.replace(/^\/+/, "");
 }
 
 function getCurrentWorkouts(programBundle: ProgramBundle | null): WorkoutTemplate[] {

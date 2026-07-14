@@ -53,6 +53,21 @@ Recommended build settings:
 The included `public/_headers` file keeps service worker files fresh while
 allowing long-lived caching for hashed assets and offline exercise images.
 
+## GitHub Pages
+
+This repository is configured for the project URL
+`https://<username>.github.io/gym/`.
+
+In GitHub:
+
+1. Open `Settings -> Pages`.
+2. Set `Build and deployment -> Source` to `GitHub Actions`.
+3. Push `main`.
+4. Open the deployment URL from the completed `Deploy GitHub Pages` action.
+
+The Vite `base` option is set to `/gym/`, so rename the repository only together
+with the matching `base` value in `vite.config.ts`.
+
 ## Android Install
 
 1. Open the production URL in Chrome on Android.

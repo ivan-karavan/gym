@@ -1,5 +1,6 @@
 import type { MediaAsset, SetLog, WorkoutExerciseSnapshot } from "../domain/types";
 import type { PreviousWeekHint, SaveSetPayload } from "../app/useAppStore";
+import { getPublicAssetPath } from "../app/assetPath";
 import { SetEditor } from "./SetEditor";
 
 interface ExerciseCardProps {
@@ -17,7 +18,7 @@ export function ExerciseCard({ exercise, media, sets, previousWeeks, onSaveSet }
     <article className="exercise-card" aria-label={exercise.exerciseName}>
       <div className="exercise-media">
         {media ? (
-          <img src={`/${media.localPath}`} alt={media.alt} />
+          <img src={getPublicAssetPath(media.localPath)} alt={media.alt} />
         ) : (
           <div className="exercise-image-fallback" role="img" aria-label={exercise.exerciseName}>
             {exercise.exerciseName.slice(0, 1)}

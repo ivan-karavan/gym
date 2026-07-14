@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const distDir = join(rootDir, "dist");
+const pagesBase = "/gym/";
 const failures = [];
 
 const expectedExerciseFiles = [
@@ -86,6 +87,12 @@ const indexHtml = readText("index.html");
 for (const fragment of ["manifest.webmanifest", "registerSW.js", "theme-color"]) {
   if (!indexHtml.includes(fragment)) {
     failures.push(`index.html does not include ${fragment}`);
+  }
+}
+
+for (const fragment of [`${pagesBase}assets/`, `${pagesBase}pwa-192x192.png`]) {
+  if (!indexHtml.includes(fragment)) {
+    failures.push(`index.html does not include GitHub Pages base path fragment ${fragment}`);
   }
 }
 
