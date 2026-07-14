@@ -8,8 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "smoke:prod": "npm run build && node scripts/smoke-production-build.mjs",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test": "TZ=Europe/Moscow vitest run --passWithNoTests",
+    "test:watch": "TZ=Europe/Moscow vitest"
   },
   "dependencies": {
     "dexie": "^4.0.11",
